@@ -1,11 +1,11 @@
 Pobi
 ====
 
-Nam: Tcomes from The Three Body Trilogy (aka. SANTI) part II
+Name: Comes from Liu Cixin's science fiction `The Three Body Trilogy` (aka. SANTI) part II.
 
-Purpose: to passthrough the Wall
+Purpose: To passthrough (or breakdown) the Wall.
 
-toolchain
+Component
 =========
 
 dns: provide dns antidote.
