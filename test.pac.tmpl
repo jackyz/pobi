@@ -1,0 +1,43 @@
+function FindProxyForURL(url, host){
+  var debugPAC ="PAC Debug Information\n";
+  debugPAC +="-----------------------------------\n";
+  debugPAC +="Machine IP: " + myIpAddress() + "\n";
+  debugPAC +="Hostname: " + host + "\n";
+  var resolvableHost = "";
+  if (isResolvable(host)) {
+    resolvableHost = "True"
+  } else {
+    resolvableHost = "False"
+  };
+  debugPAC +="Host Resolvable: " + resolvableHost + "\n";
+  debugPAC +="Hostname IP: " + dnsResolve(host) + "\n";
+  var plainHost = "";
+  if (isPlainHostName(host)) {
+    plainHost = "True"
+  } else {
+    plainHost = "False"
+  };
+  debugPAC +="Plain Hostname: " + plainHost + "\n";
+  debugPAC +="Domain Levels: " + dnsDomainLevels(host) + "\n";
+  debugPAC +="URL: " + url + "\n";
+
+  // Protocol can only be determined by reading the entire URL.
+  var protocol = "";
+  if (url.substring(0,5)=="http:") {
+    protocol="HTTP";
+  } else if (url.substring(0,6)=="https:") {
+    protocol="HTTPS";
+  } else if (url.substring(0,4)=="ftp:") {
+    protocol="FTP";
+  } else {
+    protocol="Unknown";
+  }
+  debugPAC +="Protocol: " + protocol + "\n";
+
+  // Reduce volume of alerts to a useable level, e.g. only alert on static text pages.
+  // if (!shExpMatch(url,"*.(js|xml|ico|gif|png|jpg|jpeg|css|swf)*")) {
+  // alert(debugPAC);
+  // }
+
+  return 'PROXY {{ ip }}:{{ port }}';
+}
