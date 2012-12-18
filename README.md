@@ -8,12 +8,12 @@ Purpose: To passthrough (or breakdown) the Wall.
 Component
 =========
 
-dns: provide dns antidote.
+* dns: provide dns antidote.
 
-wpad: provide proxy rule automatically, avoid unnecessary overhead.
+* wpad: provide proxy rule automatically, avoid unnecessary overhead.
 
-local: provide a local proxy for browser, mask data to passthough.
+* local: provide a local proxy for browser, mask data to passthough.
 
-remote: provide a remote worker, unmask data and access target.
+* remote: provide a remote worker, unmask data and access target.
 
-core: helps local and remote to exchange tokens.
+* core: helps local and remote to exchange tokens.
