@@ -116,7 +116,7 @@ function start(opt){
 exports.start = start;
 
 if(!module.parent) {
-  // node http leaks socket, bug 3660
+  // node http leaks socket, bug 3536
   process.on('uncaughtException', function(e){
     debug('UNCAUGHTEXCEPTION', e.stack);
   });

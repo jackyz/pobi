@@ -18,5 +18,8 @@
     }
   },
   "proxy": {
+    "upstream": {
+      "protocol": "ws"
+    }
   }
 }

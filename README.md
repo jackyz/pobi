@@ -3,26 +3,32 @@ Pobi Project
 
 Purpose: A simple Fan-Qiang solution you can set it up for your old man.
 
-* The name was Inspired by Liu Cixin's science fiction `The Three Body Trilogy` (aka. `SanTi`) part II. *
+_The name was Inspired by Liu Cixin's science fiction `The Three Body Trilogy` (aka. `SanTi`) part II._
 
 Components
-==========
+----------
 
 * LOCAL runs on local host or local network.
+
     * DNS: a DNS server to antidote dns poison of the wall.
     * WPAD: a WPAD server to provide proxy rules auto discovery.
     * PROXY: a HTTP PROXY server for browsers, forward masked data to WORKERS.
 
+
 * WORKERS runs on somewhere outside of the Wall.
-    * unmask data and do the job.
+
+    * unmask data and perform the jobs.
+
 
 * HELPERS runs on somewhere outside of the Wall
+
     * helps to make connect between PROXY and WORKERS.
 
-* For now, we just have a DO-NOTHING `LOCAL`, but it works (for early adapters, you can understand how it works). Due to the plugable `WORKERS` and protocls is not ready. We are still work on it. *
+
+_For now, we just have a DO-NOTHING `LOCAL`, but it works (for early adapters, you can understand how it works). Due to the plugable `WORKERS` and protocls is not ready. We are still work on it._
 
 Install & Run
-=============
+-------------
 
 #### LOCAL
 
@@ -60,13 +66,8 @@ You need `Manually proxy configuration` set HTTP proxy to `127.0.0.1:8080`.
 
 comming soon...
 
-Thanks
-======
-
-* GFW White List https://github.com/n0wa11/gfw_whitelist
-
 Q & A
-=====
+-----
 
 Why http proxy?
 
@@ -75,3 +76,9 @@ Why http proxy?
 Where is socks5?
 
 * It's on the way.
+
+Thanks
+------
+
+* GFW White List https://github.com/n0wa11/gfw_whitelist
+
