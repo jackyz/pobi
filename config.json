@@ -19,7 +19,7 @@
   },
   "proxy": {
     "upstream": {
-      "protocol": "ws"
+      "protocol": "noop"
     }
   }
 }

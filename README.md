@@ -38,20 +38,20 @@ If you don't want to change the router (or you cann't). Just set `Automatic prox
 
 Now you can browsing sites you will see how it's working (because we do nothing on worker yet, so you cannot access gfwed sites for now, we are working on it).
 
-**Tips**
-
-* testing dns try `dig twitter.com @127.0.0.1`
-* testing wpad try `curl http://127.0.0.1/wpad.dat`
-* testing http proxy try `curl -x 127.0.0.1:8080 http://qq.com`
-* testing http tunnel try `curl -x 127.0.0.1:8080 https://github.com`
-
-**Proxy only**
+**Proxy only mode**
 
 `DEBUG=* node pobi`
 
 This starts up only a http proxy on 8080. you need not the root permission. But you need more config.
 
 You need `Manually proxy configuration` set HTTP proxy to `127.0.0.1:8080`.
+
+**Tips**
+
+* testing dns try `dig twitter.com @127.0.0.1`
+* testing wpad try `curl http://127.0.0.1/wpad.dat`
+* testing http proxy try `curl -x 127.0.0.1:8080 http://qq.com`
+* testing http tunnel try `curl -x 127.0.0.1:8080 https://github.com`
 
 #### WORKERS
 #### HELPERS

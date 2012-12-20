@@ -1,14 +1,20 @@
 var debug = require('debug')('PROXY')
     , http = require('http')
     , url = require('url')
-    , net = require('net');
+    , net = require('net')
+    , config = require('../util/config');
+
+var up = config('proxy', 'upstream', 'protocol') || 'noop';
+
+var upstream = require('../proto/'+up+'-stream');
 
 var connectTimeout = 2000; // 2'
 var transferTimeout = 30000; // 30'
 
 function tunnel(req, sock, head){
   var o = url.parse('http://'+req.url);
-  var usock = net.connect(o.port, o.hostname);
+  var usock = upstream.connect(o.port, o.hostname);
+  // var usock = net.connect(o.port, o.hostname);
   function close(){
     debug('%s : tunnel %s %s END', req.ip, req.method, req.url);
     try { sock.destroy(); } catch(x){ }
@@ -49,14 +55,16 @@ function proxy(req, res){
   } else {
     headers['X-Forwarded-For'] = req.ip;
   }
-  var ureq = http.request({
+  var ropts = {
     host: o.hostname,
     port: o.port,
     path: o.path,
     method: req.method,
     headers: headers, // req.headers,
-    agent: false
-  });
+    agent: upstream.agent // using the upstream connections
+    // agent: false, // using the original http
+  };
+  var ureq = http.request(ropts);
   function close(){
     debug('%s : proxy %s %s END', req.ip, req.method, req.url);
     try { ureq.abort(); } catch(x){ }

@@ -5,7 +5,7 @@ process.on('uncaughtException', function(e){
   debug('UNCAUGHTEXCEPTION', e.stack);
 });
 
+require('./proxy').start({port:8080});
 require('./dns').start({port:53});
 require('./wpad').start({port:80});
-require('./proxy').start({port:8080});
 
