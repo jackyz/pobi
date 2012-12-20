@@ -1,6 +1,7 @@
 var debug = require('debug')('LOCAL')
     , axon = require('axon');
 
+/*
 var req = axon.socket('req');
 req.format('json');
 req.connect(3030);
@@ -10,13 +11,19 @@ exports.echo = function(param,cb){
     cb(d);
   });
 };
+*/
 
-/*
 var id = 0;
 var callbacks = {};
 
 var push = axon.socket('push');
 push.connect(3031);
+
+function call(fun, param, cb){
+  var x = id++;
+  callbacks[x] = cb;
+  push.send(JSON.stringify([x, fun, param]));
+}
 
 var pull = axon.socket('pull');
 pull.connect(3032);
@@ -32,4 +39,11 @@ pull.on('message', function(str){
   }
   delete callbacks[id];
 });
-*/
+
+
+exports.echo = function(param,cb){
+  call('echo',param,cb);
+};
+
+exports.connect = function(opts){
+};

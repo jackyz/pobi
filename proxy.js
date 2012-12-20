@@ -3,54 +3,44 @@ var debug = require('debug')('PROXY')
     , url = require('url')
     , net = require('net');
 
-var timeout = 2000;
+var connectTimeout = 2000; // 2'
+var transferTimeout = 30000; // 30'
 
-function tunnel(req, sock, head, cb){
-  var o = req.url.split(':');
-  var uhost = o[0];
-  var uport = o[1];
-  // var usock = local.connect(uhost,uport);
-  var usock = new net.Socket();
-  usock.on('connect',function(){
-    usock.setTimeout(0);
+function tunnel(req, sock, head){
+  var o = url.parse('http://'+req.url);
+  var usock = net.connect(o.port, o.hostname);
+  function close(){
+    debug('%s : tunnel %s %s END', req.ip, req.method, req.url);
+    try { sock.destroy(); } catch(x){ }
+    try { usock.destroy(); } catch(x){ }
+  }
+  function timeout(){
+    debug('%s : tunnel %s %s TIMEOUT', req.ip, req.method, req.url);
+    close();
+  }
+  function error(e){
+    debug('%s : tunnel %s %s ERROR %j', req.ip, req.method, req.url, e);
+    close();
+  }
+  // sock.on('timeout', timeout);
+  sock.on('error', error);
+  sock.on('end', close);
+  usock.on('timeout', timeout);
+  usock.on('error', error);
+  usock.on('end', close);
+  usock.on('connect', function(){
+    debug('%s : tunnel %s %s BEGIN', req.ip, req.method, req.url);
     sock.write('HTTP/1.0 200 Connect ok\r\n\r\n\r\n');
-    debug('%s : %s %s tunnel begin', req.ip, req.method, req.url);
-    sock.pipe(usock);
-    sock.on('end', function(){
-      debug('%s : %s %s tunnel end', req.ip, req.method, req.url);
-      usock.destroy();
-      cb();
-    });
-    sock.on('error', function(e){
-      usock.destroy();
-      cb(e);
-    });
+    usock.setTimeout(transferTimeout);
+    usock.write(head);
     usock.pipe(sock);
-    usock.on('end', function(e){
-      // debug('%s : %s %s tunnel end', req.ip, req.method, req.url);
-      // cb(); // need not will auto close when usock closed
-    });
-    usock.on('error', function(e){
-      sock.destroy();
-      cb(e);
-    });
   });
-  usock.setTimeout(timeout, function(){
-    sock.write('HTTP/1.0 400 Connect timeout\r\n\r\n\r\n');
-    sock.end();
-    usock.destroy();
-    cb('ETIMEOUT');
-  });
-  usock.on('error', function(e){
-    sock.write('HTTP/1.0 400 Connect fail\r\n\r\n\r\n');
-    sock.end();
-    usock.destroy();
-    cb(e);
-  });
-  usock.connect(uport, uhost);
+  usock.setTimeout(connectTimeout);
+  sock.pipe(usock);
 }
 
-function proxy(req, res, cb){
+function proxy(req, res){
+  var o = url.parse(req.url);
   // expose ip
   var headers = req.headers;
   headers['X-Forwarded-Proto'] = "http";
@@ -59,43 +49,40 @@ function proxy(req, res, cb){
   } else {
     headers['X-Forwarded-For'] = req.ip;
   }
-  var o = url.parse(req.url);
-  // var ureq = local.request();
   var ureq = http.request({
     host: o.hostname,
     port: o.port,
     path: o.path,
     method: req.method,
-    headers: req.headers,
+    headers: headers, // req.headers,
     agent: false
   });
-  ureq.on('response',function(ures){
-    ureq.setTimeout(0);
-    ures.on('end', function(){
-      debug('%s : %s %s ok', req.ip, req.method, req.url);
-      cb();
-    });
-    ures.on('error', function(e){
-      res.statusCode = 500;
-      res.end();
-      cb(e);
-    });
+  function close(){
+    debug('%s : proxy %s %s END', req.ip, req.method, req.url);
+    try { ureq.abort(); } catch(x){ }
+    try { res.end(); } catch(x){ }
+  }
+  function timeout(){
+    debug('%s : proxy %s %s TIMEOUT', req.ip, req.method, req.url);
+    close();
+  }
+  function error(e){
+    debug('%s : proxy %s %s ERROR %j', req.ip, req.method, req.url, e);
+    close();
+  }
+  req.on('error', error);
+  // req.on('end', close);
+  ureq.on('timeout', timeout);
+  ureq.on('response', function(ures){
+    debug('%s : proxy %s %s BEGIN', req.ip, req.method, req.url);
+    ureq.setTimeout(transferTimeout);
+    ures.on('error', error);
+    ures.on('end', close);
     res.statusCode = ures.statusCode;
     for(var k in ures.headers){ res.setHeader(k,ures.headers[k]); }
     ures.pipe(res);
   });
-  ureq.setTimeout(timeout, function(){
-    res.statusCode = 500;
-    res.end();
-    ureq.abort();
-    cb('ETIMEOUT');
-  });
-  ureq.on('error', function(e){
-    res.statusCode = 500;
-    res.end();
-    ureq.abort();
-    cb(e);
-  });
+  ureq.setTimeout(connectTimeout);
   req.pipe(ureq);
 }
 
@@ -105,15 +92,11 @@ function start(opt){
   };
   var onRequest = function(req, res){
     req.ip = req.connection.remoteAddress;
-    proxy(req, res, function(e){
-      if (e) debug("%s : %s %s fail %j", req.ip, req.method, req.url, e);
-    });
+    proxy(req, res);
   };
   var onConnect = function(req, sock, head){
     req.ip = req.connection.remoteAddress;
-    tunnel(req, sock, head, function(e){
-      if (e) debug("%s : %s %s fail %j", req.ip, req.method, req.url, e);
-    });
+    tunnel(req, sock, head);
   };
   var onClose = function(){
     debug("closed %j", this.address());
@@ -133,5 +116,9 @@ function start(opt){
 exports.start = start;
 
 if(!module.parent) {
+  // node http leaks socket, bug 3660
+  process.on('uncaughtException', function(e){
+    debug('UNCAUGHTEXCEPTION', e.stack);
+  });
   start({port:8080});
 }
