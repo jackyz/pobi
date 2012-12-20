@@ -9,21 +9,13 @@ Components
 ----------
 
 * LOCAL runs on local host or local network.
-
     * DNS: a DNS server to antidote dns poison of the wall.
     * WPAD: a WPAD server to provide proxy rules auto discovery.
     * PROXY: a HTTP PROXY server for browsers, forward masked data to WORKERS.
-
-
 * WORKERS runs on somewhere outside of the Wall.
-
     * unmask data and perform the jobs.
-
-
 * HELPERS runs on somewhere outside of the Wall
-
     * helps to make connect between PROXY and WORKERS.
-
 
 _For now, we just have a DO-NOTHING `LOCAL`, but it works (for early adapters, you can understand how it works). Due to the plugable `WORKERS` and protocls is not ready. We are still work on it._
 
@@ -34,7 +26,7 @@ Install & Run
 
 `npm install -g pobi`
 
-** easy mode **
+**Easy mode**
 
 `sudo DEBUG=* node pobi`
 
@@ -46,14 +38,14 @@ If you don't want to change the router (or you cann't). Just set `Automatic prox
 
 Now you can browsing sites you will see how it's working (because we do nothing on worker yet, so you cannot access gfwed sites for now, we are working on it).
 
-** Tips **
+**Tips**
 
 * testing dns try `dig twitter.com @127.0.0.1`
 * testing wpad try `curl http://127.0.0.1/wpad.dat`
 * testing http proxy try `curl -x 127.0.0.1:8080 http://qq.com`
 * testing http tunnel try `curl -x 127.0.0.1:8080 https://github.com`
 
-** proxy only mode **
+**Proxy only**
 
 `DEBUG=* node pobi`
 
@@ -80,5 +72,5 @@ Where is socks5?
 Thanks
 ------
 
-* GFW White List https://github.com/n0wa11/gfw_whitelist
+* GFW White List: https://github.com/n0wa11/gfw_whitelist
 
