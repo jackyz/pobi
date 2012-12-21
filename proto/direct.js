@@ -1,4 +1,4 @@
-var debug = require('debug')('NOOP')
+var debug = require('debug')('DIRECT')
     , http = require('http')
     , net = require('net');
 
@@ -10,4 +10,4 @@ exports.connect = net.connect;
 
 exports.agent = http.globalAgent;
 
-debug('protocol selected');
+debug('selected');

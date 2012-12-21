@@ -19,7 +19,11 @@
   },
   "proxy": {
     "upstream": {
-      "protocol": "noop"
+      "protocol": "socks5"
     }
+  },
+  "socks5": {
+    "ip": "127.0.0.1",
+    "port": 7070
   }
 }

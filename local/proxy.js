@@ -4,12 +4,12 @@ var debug = require('debug')('PROXY')
     , net = require('net')
     , config = require('../util/config');
 
-var up = config('proxy', 'upstream', 'protocol') || 'noop';
+var protocol = config('proxy', 'upstream', 'protocol') || 'direct';
 
-var upstream = require('../proto/'+up+'-stream');
+var upstream = require('../proto/'+protocol);
 
-var connectTimeout = 2000; // 2'
-var transferTimeout = 30000; // 30'
+var connectTimeout = 2000; // 2 second
+var transferTimeout = 30000; // 30 second
 
 function tunnel(req, sock, head){
   var o = url.parse('http://'+req.url);

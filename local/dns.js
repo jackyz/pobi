@@ -109,7 +109,7 @@ function start(opt){
       resolveGfw(d, function(e,r){
         if(e) {
           debug("GFW %s : %j : %j", req.ip, d, e);
-	  res.header.rcode = ndns.const.NAME_TO_RCODE.NOTFOUND;
+	  res.header.rcode = ndns.consts.NAME_TO_RCODE.NOTFOUND;
         } else {
           r.forEach(function(ip){
             res.answer.push(ndns.A({
@@ -126,7 +126,7 @@ function start(opt){
       forwardQuery(q, function(e,r){
         if(e) {
           debug("%s : forward %j : %j", req.ip, q, e);
-	  res.header.rcode = ndns.const.NAME_TO_RCODE.NOTFOUND;
+	  res.header.rcode = ndns.consts.NAME_TO_RCODE.NOTFOUND;
         } else {
           res.answer = r;
         }
