@@ -1,6 +1,6 @@
 var debug = require('debug')('SOCKS5')
-    , Agent = require('./socks_agent')
-    , Socket = require('./socks_socket')
+    // , Agent = require('./socks_agent')
+    , Socks = require('./socks_socket')
     , http = require('http')
     , config = require('../util/config');
 
@@ -12,24 +12,19 @@ debug('%s:%s selected', socks5_ip, socks5_port);
 // Socket
 
 function connect(port, host){
-  var opts = {
-    socks_host: socks5_ip,
-    socks_port: socks5_port,
-    host: host,
-    port: port
-  };
-  return Socket.createConnection(opts);
+  var socks = new Socks(socks5_ip, socks5_port);
+  // debug("!!!! connect", arguments);
+  if (typeof arguments[0] == 'object') { // call by (options) params
+    var opt = arguments[0];
+    return socks.connect(opt.port, opt.host);
+  } else { // call by (port, host) params
+    var port = arguments[0];
+    var host = arguments[1];
+    return socks.connect(port, host);
+  }
 };
 
 exports.connect = connect;
-
-// Agent
-
-var agent = new Agent({
-  socks_host: socks5_ip,
-  socks_port: socks5_port
-});
-exports.agent = agent;
 
 /*
 // test socket ok
@@ -50,7 +45,6 @@ sock.on('end', function(){
   debug('END');
 });
 */
-
 /*
 // test agent ok
 var options = {

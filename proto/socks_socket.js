@@ -1,12 +1,8 @@
 var net = require('net');
 var stream = require('stream');
-var sprintf = require('sprintf').sprintf;
+// var sprintf = require('sprintf').sprintf;
 var inherits = require('util').inherits;
-
-exports.createConnection = function(options) {
-  var socksSocket = new SocksClientSocket(options.socks_host, options.socks_port);
-  return socksSocket.connect(options.port, options.host);
-};
+var debug = require('debug')('SOCKS_SOCKET');
 
 function SocksClientSocket(socks_host, socks_port) {
   stream.Stream.call(this);
@@ -68,7 +64,6 @@ SocksClientSocket.prototype.connect = function(port, host) {
   self.socket.connect(self.socks_port, self.socks_host, function() {
     self.establish_socks_connection(host, port);
   });
-      
   return self;
 };
 
@@ -232,12 +227,16 @@ function parseDomainName(host, buffer) {
 }
 
 function parsePort(port, buffer) {
+  /*
   var portStr = sprintf("%04d", port);
   var byte1 = parseInt(portStr.substr(0,2));
   var byte2 = parseInt(portStr.substr(2,2));
-
   buffer.push(byte1);
   buffer.push(byte2);
+  */
+  var p = parseInt(port);
+  buffer.push( (p & 0xff00) >> 8 );
+  buffer.push( p & 0xff );
 }
 
 function get_error_message(code) {
@@ -262,3 +261,5 @@ function get_error_message(code) {
       return 'Unknown status code ' + code;
   }
 }
+
+module.exports = SocksClientSocket;
