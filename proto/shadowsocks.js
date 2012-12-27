@@ -1,73 +1,194 @@
-var net = require('net');
-var stream = require('stream');
-// var sprintf = require('sprintf').sprintf;
-var inherits = require('util').inherits;
-var debug = require('debug')('SOCKS_SOCKET');
+var debug = require('debug')('PROTO:SHADOWSOCKS')
+    , net = require('net')
+    , stream = require('stream')
+    , crypto = require('crypto')
+    // , events = require('events')
+    // , sprintf = require('sprintf').sprintf;
+    , inherits = require('util').inherits
+    , config = require('../util/config');
 
-function SocksClientSocket(socks_host, socks_port) {
+var _ip = config('proto', 'shadowsocks', 'ip') || '127.0.0.1';
+var _port = config('proto', 'shadowsocks', 'port') || 7070;
+var _pass = config('proto', 'shadowsocks', 'pass') || "cool";
+
+var tables = genTable(_pass);
+
+var _en_table = tables[0];
+var _de_table = tables[1];
+
+// ---- shadowsocks encode/decode
+
+function merge_sort(array, comp){
+  
+  function merge(left, right) {
+    var result = new Array();
+    while ((left.length > 0) && (right.length > 0)) {
+      if (comp(left[0], right[0]) <= 0)
+        result.push(left.shift());
+      else
+        result.push(right.shift());
+    }
+    while (left.length > 0) result.push(left.shift());
+    while (right.length > 0) result.push(right.shift());
+    return result;
+  }
+  
+  if (array.length < 2) return array;
+  var middle = Math.ceil(array.length / 2);
+  return merge(
+    merge_sort(array.slice(0, middle), comp),
+    merge_sort(array.slice(middle), comp)
+  ); 
+}
+
+var Max = Math.pow(2,32);
+
+function genTable(key){
+  var md5 = crypto.createHash('md5');
+  md5.update(key);
+  var hash = new Buffer(md5.digest(), 'binary');
+  var al = hash.readUInt32LE(0);
+  var ah = hash.readUInt32LE(4);
+  var en_table = new Array(256);
+  var de_table = new Array(256);
+  for(var i=0; i<256; i++){
+    en_table[i] = i;
+  }
+  for(var i=1; i<1024; i++){
+    en_table = merge_sort(en_table, function(x,y){
+      return ((ah % (x + i)) * Max + al) % (x + i) - ((ah % (y + i)) * Max + al) % (y + i);
+    });
+  }
+  for(var i=0; i<256; i++){
+    de_table[en_table[i]] = i;
+  }
+  return [en_table, de_table];
+}
+
+function trans(table, buf){
+  var buf2 = new Buffer(buf.length);
+  for(var i=0; i<buf.length; i++){
+    buf2[i] = table[buf[i]];
+  }
+  return buf2;
+}
+
+function encode(buf){
+  return trans(_en_table, buf);
+};
+function decode(buf){
+  return trans(_de_table, buf);
+};
+
+exports.encode = encode;
+exports.decode = decode;
+
+/*
+var buff1 = new Buffer("abcdefg");
+debug("buff1", buff1);
+var buff2 = encode(buff1);
+debug("buff2", buff2);
+var buff3 = decode(buff2);
+debug("buff3", buff3);
+*/
+
+// ---- shadowsocks client interface
+
+function connect(port, host){
+  debug("!!!! connect(%j) via %s:%s#%s", arguments, _ip, _port, _pass);
+  var socks = new ShadowSocks(_ip, _port);
+  if (typeof arguments[0] == 'object') { // call by (options) params
+    var opt = arguments[0];
+    return socks.connect(opt.port, opt.host);
+  } else { // call by (port, host) params
+    var port = arguments[0];
+    var host = arguments[1];
+    return socks.connect(port, host);
+  }
+};
+
+exports.connect = connect;
+
+// ---- shadowsocks client implement
+
+function ShadowSocks(host, port, pass) {
   stream.Stream.call(this);
 
   this.socket = new net.Socket();
-  this.socks_host = socks_host;
-  this.socks_port = socks_port;
+  this._host = host;
+  this._port = port;
+  this._pass = pass;
 }
-//inherits(SocksClientSocket, net.Socket);
-inherits(SocksClientSocket, stream.Stream);
+//inherits(ShadowSocks, net.Socket);
+//inherits(ShadowSocks, events.EventEmitter);
+inherits(ShadowSocks, stream.Stream);
 
-SocksClientSocket.prototype.setTimeout = function(msecs, callback) {
+ShadowSocks.prototype.setTimeout = function(msecs, callback) {
   this.socket.setTimeout(msecs, callback);
 };
 
-SocksClientSocket.prototype.setNoDelay = function() {
+ShadowSocks.prototype.setNoDelay = function() {
   this.socket.setNoDelay();
 };
 
-SocksClientSocket.prototype.setKeepAlive = function(setting, msecs) {
+ShadowSocks.prototype.setKeepAlive = function(setting, msecs) {
   this.socket.setKeepAlive(setting, msecs);
 };
 
-SocksClientSocket.prototype.address = function() {
+ShadowSocks.prototype.address = function() {
   return this.socket.address();
 };
 
-SocksClientSocket.prototype.pause = function() {
+ShadowSocks.prototype.pause = function() {
   this.socket.pause();
 };
 
-SocksClientSocket.prototype.resume = function() {
+ShadowSocks.prototype.resume = function() {
   this.socket.resume();
 };
 
-SocksClientSocket.prototype.end = function(data, encoding) {
+ShadowSocks.prototype.end = function(data, encoding) {
   return this.socket.end(data, encoding);
 };
 
-SocksClientSocket.prototype.destroy = function(exception) {
+ShadowSocks.prototype.destroy = function(exception) {
   this.socket.destroy(exception);
 };
 
-SocksClientSocket.prototype.destroySoon = function() {
+ShadowSocks.prototype.destroySoon = function() {
   this.socket.destroySoon();
   this.writable = false; // node's http library asserts writable to be false after destroySoon
 };
 
-SocksClientSocket.prototype.setEncoding = function(encoding) {
+ShadowSocks.prototype.setEncoding = function(encoding) {
   this.socket.setEncoding(encoding);
 };
 
-SocksClientSocket.prototype.write = function(data, arg1, arg2) {
+ShadowSocks.prototype.write = function(data, arg1, arg2) {
   return this.socket.write(data, arg1, arg2);
 };
 
-SocksClientSocket.prototype.connect = function(port, host) {
+ShadowSocks.prototype.connect = function(port, host) {
   var self = this;
-  self.socket.connect(self.socks_port, self.socks_host, function() {
+  // ----
+  self.socket.on('timeout', function(){
+    // debug("TIMEOUT");
+    self.emit('timeout');
+  });
+  self.socket.on('error', function(e){
+    // debug("ERROR", e);
+    // debug('onerror',self._events.error);
+    self.emit('error',e);
+  });
+  // ----
+  self.socket.connect(self._port, self._host, function() {
+    self.socket.removeAllListeners(); // added
     self.establish_socks_connection(host, port);
   });
   return self;
 };
 
-SocksClientSocket.prototype.establish_socks_connection = function(host, port) {
+ShadowSocks.prototype.establish_socks_connection = function(host, port) {
   var self = this;
 
   self.authenticate(function() {
@@ -97,7 +218,7 @@ SocksClientSocket.prototype.establish_socks_connection = function(host, port) {
   });
 };
 
-SocksClientSocket.prototype.authenticate = function(cb) {
+ShadowSocks.prototype.authenticate = function(cb) {
   var self = this;
   self.socket.ondata = function(d, start, end) {
     if(end - start != 2) {
@@ -122,7 +243,7 @@ SocksClientSocket.prototype.authenticate = function(cb) {
   self.socket.write(request);
 };
 
-SocksClientSocket.prototype.connect_socks_to_host = function(host, port, cb) {
+ShadowSocks.prototype.connect_socks_to_host = function(host, port, cb) {
   this.socket.ondata = function(d, start, end) {
     if(d[start] != 0x05) {
       throw new Error('SOCKS connection failed. Unexpected SOCKS version number: ' + d[start]);
@@ -195,6 +316,7 @@ SocksClientSocket.prototype.connect_socks_to_host = function(host, port, cb) {
   this.socket.write(request);
 }
 
+
 function parseIPv4(host, buffer) {
   var groups = host.split('.');
   for(var i=0; i < groups.length; i++) {
@@ -261,5 +383,3 @@ function get_error_message(code) {
       return 'Unknown status code ' + code;
   }
 }
-
-module.exports = SocksClientSocket;

@@ -1,16 +1,16 @@
-var debug = require('debug')('DNS')
+var debug = require('debug')('LOCAL:DNS')
     , _ = require('underscore')
     , ndns = require('native-dns')
     , config = require('../util/config');
 
-var uip = config('dns', 'upstream', 'ip') || '8.8.8.8';
-var uport = config('dns', 'upstream', 'port') || 53;
-var uprotocol = config('dns', 'upstream', 'protocol') || 'udp';
+var uip = config('local','dns', 'upstream', 'ip') || '8.8.8.8';
+var uport = config('local', 'dns', 'upstream', 'port') || 53;
+var uprotocol = config('local','dns', 'upstream', 'protocol') || 'udp';
 
-var gfw_domains = config('dns', 'gfw') || ['twitter.com','facebook.com'];
+var gfw_domains = config('local','dns', 'gfw') || ['twitter.com','facebook.com'];
 
 var wpad_domain = 'wpad';
-var wpad_ip = config('dns', 'wpad') || '127.0.0.1';
+var wpad_ip = config('local','dns', 'wpad') || '127.0.0.1';
 var timeout = 2000;
 
 function forwardQuery(q, cb){

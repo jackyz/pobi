@@ -1,29 +1,41 @@
 {
-  "dns": {
-    "wpad": "127.0.0.1",
-    "upstream": {
-      "ip": "8.8.8.8",
-      "port": 53,
-      "protocol": "udp"
+  "local": {
+    "dns": {
+      "wpad": "127.0.0.1",
+      "upstream": {
+        "ip": "8.8.8.8",
+        "port": 53,
+        "protocol": "udp"
+      },
+      "gfw": ["twitter.com", "facebook.com"]
     },
-    "gfw": ["twitter.com", "facebook.com"]
-  },
-  "wpad": {
-    "pac": {
-      "template": "gfw.pac.tmpl",
-      "proxy": {
-        "ip": "127.0.0.1",
-        "port": 8080
+    "wpad": {
+      "pac": {
+        "template": "gfw.pac.tmpl",
+        "proxy": {
+          "ip": "127.0.0.1",
+          "port": 8080
+        }
       }
+    },
+    "http": {},
+    "socks5": {}
+  },
+  "proto": {
+    "select": "socks5",
+    "direct": {},
+    "socks5": {
+      "ip": "127.0.0.1",
+      "port": 7070
+    },
+    "shadowsocks": {
+      "ip": "127.0.0.1",
+      "port": 7070,
+      "pass": "cool"
     }
   },
-  "proxy": {
-    "upstream": {
-      "protocol": "socks5"
-    }
-  },
-  "socks5": {
-    "ip": "127.0.0.1",
-    "port": 7070
+  "worker": {
+    "socks5": {},
+    "shadowsocks": {}
   }
 }

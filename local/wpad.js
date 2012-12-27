@@ -1,12 +1,12 @@
-var debug = require('debug')('WPAD')
+var debug = require('debug')('LOCAL:WPAD')
     , http = require('http')
     , fs = require('fs')
     , path = require('path')
     , _ = require('underscore')
     , config = require('../util/config');
 
-var wpad_pac_tmpl = config('wpad','pac','template');
-var wpad_pac_proxy = config('wpad','pac','proxy');
+var wpad_pac_tmpl = config('local','wpad','pac','template');
+var wpad_pac_proxy = config('local','wpad','pac','proxy');
 var wpad_pac_tmpl_str = fs.readFileSync(path.dirname(__filename)+'/../'+wpad_pac_tmpl, 'utf8');
 var wpad_pac = _.template(wpad_pac_tmpl_str, wpad_pac_proxy,{ interpolate : /\{\{(.+?)\}\}/g });
 
