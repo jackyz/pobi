@@ -13,7 +13,7 @@ var transferTimeout = 30000; // 30 second
 
 // ---- upstream socket
 
-var protocol = config('proto','select') || 'direct';
+var protocol = config('local','proto') || 'direct';
 
 var upstream = require('../proto/'+protocol);
 
@@ -108,7 +108,7 @@ function proxy(req, res){
     for(var k in ures.headers){ res.setHeader(k,ures.headers[k]); }
     ures.pipe(res);
   });
-  // ureq.setTimeout(connectTimeout, timeout);
+  ureq.setTimeout(connectTimeout, timeout);
   req.pipe(ureq);
   // req.on('end', function(){ ureq.end(); });
 }

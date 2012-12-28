@@ -1,4 +1,4 @@
-var debug = require('debug')('HELPER:SOCKS5')
+var debug = require('debug')('WORKER:SOCKS5')
     , url = require('url')
     , net = require('net')
     , util = require('util')
@@ -40,20 +40,17 @@ function serve(sock){
   function handshake(d){
     sock.removeListener('data', handshake);
     sock.on('data', request);
+    // sock.ondata = request;
     // todo check v5
     // todo auth
     sock.write(new Buffer([0x05, 0x00])); // socks5 noauth 
   }
   function request(d){
     sock.removeListener('data', request);
+    // delete sock.ondata;
     // todo check v5
     var cmd = d[1];
     var address = socks5.decodeAddress(d,3);
-    /*
-    var host = Address.read(d,3);
-    var offset = Address.sizeOf(d,3) + 4;
-    var port = d.readUInt16BE(offset);
-    */
     var host = address.host;
     var port = address.port;
     // debug("REQUEST %d %s:%s", cmd, host, port);
@@ -63,21 +60,23 @@ function serve(sock){
       usock.on('error', error);
       usock.on('connect', function(){
         // debug('%s -> %s', sock.remoteAddress, host);
-        debug('%s BEGIN', sock.remoteAddress);
-        sock.pipe(usock);
-	// sock.setTimeout(0);
-	// sock.setTimeout(transferTimeout, timeout);
-        usock.pipe(sock);
+        // debug('%s BEGIN', sock.remoteAddress);
+        usock.setNoDelay(true);
 	// usock.setTimeout(0);
 	// usock.setTimeout(transferTimeout, timeout);
+        usock.pipe(sock);
+        sock.setNoDelay(true);
+	// sock.setTimeout(0);
+	// sock.setTimeout(transferTimeout, timeout);
         var resp = new Buffer(d.length);
         d.copy(resp);
         resp[0] = 0x05;
         resp[1] = 0x00;
         resp[2] = 0x00;
         sock.write(resp);
+        sock.pipe(usock);
       });
-      usock.setTimeout(connectTimeout, timeout);
+      // usock.setTimeout(connectTimeout, timeout);
       /*
     } else if (cmd == 0x02) { // bind
     } else if (cmd == 0x03) { // udp associate
@@ -88,6 +87,7 @@ function serve(sock){
     }
   }
   sock.on('data', handshake);
+  // sock.ondata = handshake;
   sock.on('end', close);
   sock.on('error', error);
   // sock.setTimeout(transferTimeout, timeout);

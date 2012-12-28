@@ -19,16 +19,16 @@
       }
     },
     "http": {},
-    "socks5": {}
+    "socks5": {},
+    "proto": "shadow"
   },
   "proto": {
-    "select": "socks5",
     "direct": {},
     "socks5": {
       "ip": "127.0.0.1",
       "port": 7070
     },
-    "shadowsocks": {
+    "shadow": {
       "ip": "127.0.0.1",
       "port": 7070,
       "pass": "cool"
@@ -36,6 +36,14 @@
   },
   "worker": {
     "socks5": {},
-    "shadowsocks": {}
+    "shadow": {
+      "pass": "cool"
+    }
+  },
+  "helper": {
+    "auth": {},
+    "account": {},
+    "discovery": {},
+    "domain": {}
   }
 }

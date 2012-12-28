@@ -4,7 +4,6 @@ var debug = require('debug')('PROTO:SOCKS5')
     , stream = require('stream')
     // , events = require('events')
     // , sprintf = require('sprintf').sprintf;
-    , inherits = require('util').inherits
     , config = require('../util/config');
 
 var _ip = config('proto', 'socks5', 'ip') || '127.0.0.1';
@@ -14,17 +13,19 @@ var _port = config('proto', 'socks5', 'port') || 7070;
 
 // ---- socks5 client interface
 
-function connect(port, host){
-  debug("!!!! connect(%j) via %s:%s", arguments, _ip, _port);
-  var socks = new SocksClientSocket(_ip, _port);
+function connect(){
+  var h, p;
   if (typeof arguments[0] == 'object') { // call by (options) params
     var opt = arguments[0];
-    return socks.connect(opt.port, opt.host);
+    p = opt.port;
+    h = opt.host;
   } else { // call by (port, host) params
-    var port = arguments[0];
-    var host = arguments[1];
-    return socks.connect(port, host);
+    p = arguments[0];
+    h = arguments[1];
   }
+  debug("==[%s:%s]==> %s:%s", _ip, _port, h, p);
+  var socks = new SocksClientSocket(_ip, _port);
+  return socks.connect(p, h);
 };
 
 exports.connect = connect;
@@ -44,7 +45,7 @@ function SocksClientSocket(socks_host, socks_port) {
 }
 //inherits(SocksClientSocket, net.Socket);
 //inherits(SocksClientSocket, events.EventEmitter);
-inherits(SocksClientSocket, stream.Stream);
+util.inherits(SocksClientSocket, stream.Stream);
 
 SocksClientSocket.prototype.setTimeout = function(msecs, callback) {
   this.socket.setTimeout(msecs, callback);
@@ -183,36 +184,6 @@ SocksClientSocket.prototype.connect_socks_to_host = function(host, port, cb) {
 
     var addr = decodeAddress(d, 3);
     // debug("connected :: addr", addr);
-    /*
-    var address = '';
-    var address_length = 0;
-
-    switch(d[start+3]) {
-      case 1:
-        address = d[start+4] + '.' + d[start+5] + '.' + d[start+6] + '.' + d[start+7];
-        address_length = 4;
-        break;
-      case 3:
-        address_length = d[start+4] + 1;
-        for(var i = start + 5; i < start + address_length; i++) {
-          address += String.fromCharCode(d[i]);
-        }
-        break;
-      case 4:
-        address_length = 16;
-        break;
-      default:
-        throw new Error('SOCKS connection failed. Unknown addres type: ' + d[start+3]);
-    }
-
-    var portIndex = start + 4 + address_length;
-    var port = d[portIndex] * 256 + d[portIndex+1];
-
-    var boundAddress = {
-      'address':  address,
-      'port':     port
-    };
-    */
 
     if(cb) cb();
   };
@@ -223,31 +194,8 @@ SocksClientSocket.prototype.connect_socks_to_host = function(host, port, cb) {
   buffer.push(0x00);  // reserved - myst be 0x00
 
   buffer = buffer.concat(encodeAddress({host:host, port:port}));
-  // debug("concat", buffer);
 
-  /*
-  switch(net.isIP(host)) {
-    case 0:
-      buffer.push(0x03);
-      parseDomainName(host, buffer);
-      break;
-    case 4:
-      buffer.push(0x01);
-      parseIPv4(host, buffer);
-      break;
-    case 6:
-      buffer.push(0x04);
-      parseIPv6(host, buffer);
-      break;
-  }
-  parsePort(port, buffer);
-  */
-
-  var request = new Buffer(buffer);
-
-  // debug("request", request.toString('hex'));
-
-  this.socket.write(request);
+  this.socket.write(new Buffer(buffer));
 }
 
 // ----
@@ -288,13 +236,6 @@ function encodeAddress(options){
   }
 
   function parsePort(port, buffer) {
-    /*
-    var portStr = sprintf("%04d", port);
-    var byte1 = parseInt(portStr.substr(0,2));
-    var byte2 = parseInt(portStr.substr(2,2));
-    buffer.push(byte1);
-    buffer.push(byte2);
-    */
     var p = parseInt(port);
     buffer.push( (p & 0xff00) >> 8 );
     buffer.push( p & 0xff );
@@ -326,7 +267,7 @@ exports.encodeAddress = encodeAddress;
 
 // buffer : the Buffer or Array
 // offset : the offset of address data. 3 for socks5
-// return : {host:ip, port:int}
+// return : {host:ip, port:int, length:int}
 function decodeAddress(buffer, offset){ 
   var host = "";
   var host_len = 0;
@@ -342,7 +283,8 @@ function decodeAddress(buffer, offset){
   }
   var portIndex = offset + 1 + host_len;
   var port = (buffer[portIndex] << 8) + buffer[portIndex+1];
-  var result = {host:host, port:port};
+  var length = portIndex + 2;
+  var result = {host:host, port:port, length:length};
   // debug("decodeAddress(%s,%s):%j", buffer.toString('hex'), offset, result);
   return result;
 }
