@@ -1,4 +1,4 @@
-var debug = require('debug')('LOCAL:SOCKS5')
+var debug = require('debug')('SOCKS5')
     , url = require('url')
     , net = require('net')
     , util = require('util')

@@ -1,7 +1,6 @@
-var debug = require('debug')('LOCAL:DNS')
+var debug = require('debug')('DNS')
     , _ = require('underscore')
-    , ndns = require('native-dns')
-    , config = require('../util/config');
+    , ndns = require('native-dns');
 
 var uip = config('local','dns', 'upstream', 'ip') || '8.8.8.8';
 var uport = config('local', 'dns', 'upstream', 'port') || 53;

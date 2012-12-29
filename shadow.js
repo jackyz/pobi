@@ -1,11 +1,10 @@
-var debug = require('debug')('WORKER:SHADOW')
+var debug = require('debug')('SHADOW')
     , url = require('url')
     , net = require('net')
     , util = require('util')
     , d = require('domain').create()
     , socks5 = require('../proto/socks5')
-    , shadow = require('../proto/shadow')
-    , config = require('../util/config');
+    , shadow = require('../proto/shadow');
 
 // ---- timeout
 

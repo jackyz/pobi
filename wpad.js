@@ -1,9 +1,8 @@
-var debug = require('debug')('LOCAL:WPAD')
+var debug = require('debug')('WPAD')
     , http = require('http')
     , fs = require('fs')
     , path = require('path')
-    , _ = require('underscore')
-    , config = require('../util/config');
+    , _ = require('underscore');
 
 var wpad_pac_tmpl = config('local','wpad','pac','template');
 var wpad_pac_proxy = config('local','wpad','pac','proxy');
@@ -51,7 +50,7 @@ function start(opt){
   server.on('request', onRequest);
   server.on('close', onClose);
   server.on('error', onError);
-  server.listen(port); 
+  server.listen(port);
 }
 exports.start = start;
 

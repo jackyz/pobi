@@ -1,10 +1,9 @@
-var debug = require('debug')('LOCAL:HTTP')
+var debug = require('debug')('HTTP')
     , http = require('http')
     , url = require('url')
     , net = require('net')
     , util = require('util')
-    , d = require('domain').create()
-    , config = require('../util/config');
+    , d = require('domain').create();
 
 // ---- timeout
 

@@ -1,4 +1,5 @@
-var debug = require('debug')('APP');
+var debug = require('debug')('LOCAL')
+    , config = require('../util/config');
 
 /*
 // node http leaks socket, bug 3536
@@ -7,8 +8,7 @@ process.on('uncaughtException', function(e){
 });
 */
 
-require('./socks5').start({port:1080});
-require('./http').start({port:8080});
-require('./dns').start({port:53});
-require('./wpad').start({port:80});
-
+var c = config('local');
+for(var n in c){
+  require('./'+n).start(c[n]);
+}
