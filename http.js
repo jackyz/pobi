@@ -2,7 +2,7 @@ var debug = require('debug')('LOCAL:HTTP')
     , http = require('http')
     , url = require('url')
     , net = require('net')
-    , inherits = require('util').inherits
+    , util = require('util')
     , d = require('domain').create()
     , config = require('../util/config');
 
@@ -21,21 +21,23 @@ var upstream = require('../proto/'+protocol);
 
 function Agent(options) {
   http.Agent.call(this, options);
-  this.createConnection = upstream.connect;
+  this.createConnection = upstream.createConnection;
 }
-inherits(Agent, http.Agent);
+util.inherits(Agent, http.Agent);
+Agent.prototype.maxSockets = 32;
 
-var agent = new Agent({maxSockets:64});
+var agent = new Agent();
 
-// ---- 
+// ----
 
 function tunnel(req, sock, head){
+  var self = this;
+  debug("connections:%s", self.connections);
   var o = url.parse('http://'+req.url);
-  // var usock = net.connect(o.port, o.hostname);
-  var usock = upstream.connect(o.port, o.hostname);
-  // debug("usock", usock);
+  var usock = upstream.createConnection(o.port, o.hostname);
   function close(){
-    debug('%s : tunnel %s %s END', req.ip, req.method, req.url);
+    debug("connections:%s", self.connections);
+    // debug('%s : tunnel %s %s END', req.ip, req.method, req.url);
     try { sock.destroy(); } catch(x){ }
     try { usock.destroy(); } catch(x){ }
   }
@@ -47,25 +49,31 @@ function tunnel(req, sock, head){
     debug('%s : tunnel %s %s ERROR %j', req.ip, req.method, req.url, e);
     close();
   }
-  // sock.on('timeout', timeout);
-  sock.on('error', error);
-  sock.on('end', close);
+  usock.setTimeout(connectTimeout, timeout);
   usock.on('error', error);
   usock.on('end', close);
   usock.on('connect', function(){
-    debug('%s : tunnel %s %s BEGIN', req.ip, req.method, req.url);
-    sock.write('HTTP/1.0 200 Connect ok\r\n\r\n\r\n');
+    // debug('%s : tunnel %s %s BEGIN', req.ip, req.method, req.url);
     usock.setTimeout(transferTimeout, timeout);
+    usock.setNoDelay(true);
     usock.write(head);
     sock.pipe(usock);
+    // sock.setTimeout(transferTimeout, timeout);
+    sock.setNoDelay(true);
+    sock.write('HTTP/1.0 200 Connect ok\r\n\r\n\r\n');
     usock.pipe(sock);
   });
-  usock.setTimeout(connectTimeout, timeout);
+  sock.setTimeout(transferTimeout, timeout);
+  // sock.setNoDelay(true);
+  sock.on('error', error);
+  sock.on('end', close);
 }
 
 // ----
 
 function proxy(req, res){
+  var self = this;
+  debug("connections:%s", self.connections);
   var o = url.parse(req.url);
   // expose ip
   var headers = req.headers;
@@ -81,12 +89,13 @@ function proxy(req, res){
     path: o.path,
     method: req.method,
     headers: headers, // req.headers,
-    agent: agent // using the upstream connections
+    agent: agent // using the upstream.createConnections
     // agent: false, // using the original http
   };
   var ureq = http.request(ropts);
   function close(){
-    debug('%s : proxy %s %s END', req.ip, req.method, req.url);
+    debug("connections:%s", self.connections);
+    // debug('%s : proxy %s %s END', req.ip, req.method, req.url);
     try { res.end(); } catch(x){ }
     try { ureq.abort(); } catch(x){ }
   }
@@ -101,16 +110,20 @@ function proxy(req, res){
     close();
   }
   ureq.on('error', error);
+  ureq.on('end', close);
   ureq.on('response', function(ures){
-    debug('%s : proxy %s %s BEGIN', req.ip, req.method, req.url);
-    // ureq.setTimeout(transferTimeout, timeout);
+    // debug('%s : proxy %s %s BEGIN', req.ip, req.method, req.url);
+    ures.on('error', error);
+    ures.on('end', close);
+    ureq.setTimeout(transferTimeout, timeout);
     res.statusCode = ures.statusCode;
     for(var k in ures.headers){ res.setHeader(k,ures.headers[k]); }
     ures.pipe(res);
   });
   ureq.setTimeout(connectTimeout, timeout);
+  req.on('error', error);
+  // req.on('end', ureq.end);
   req.pipe(ureq);
-  // req.on('end', function(){ ureq.end(); });
 }
 
 // ----
@@ -122,11 +135,11 @@ function start(opt){
   };
   var onRequest = function(req, res){
     req.ip = req.connection.remoteAddress;
-    proxy(req, res);
+    proxy.call(this, req, res);
   };
   var onConnect = function(req, sock, head){
     req.ip = req.connection.remoteAddress;
-    tunnel(req, sock, head);
+    tunnel.call(this, req, sock, head);
   };
   var onClose = function(){
     debug("closed %j", this.address());

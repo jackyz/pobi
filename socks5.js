@@ -23,6 +23,7 @@ function serve(sock){
   var self = this;
   debug("connections:%s", self.connections);
   var usock = null;
+  var buff = [];
   function close(){
     // debug('%s END', sock.remoteAddress);
     debug("connections:%s", self.connections);
@@ -39,58 +40,59 @@ function serve(sock){
   }
   function handshake(d){
     sock.removeListener('data', handshake);
-    sock.on('data', request);
-    // sock.ondata = request;
+    sock.on('data', command);
     // todo check v5
     // todo auth
-    sock.write(new Buffer([0x05, 0x00])); // socks5 noauth 
+    sock.write(new Buffer([0x05, 0x00])); // socks5 noauth
   }
-  function request(d){
-    sock.removeListener('data', request);
-    // delete sock.ondata;
+  function command(d){
+    sock.removeListener('data', command);
+    sock.on('data', await);
     // todo check v5
     var cmd = d[1];
-    var address = socks5.decodeAddress(d,3);
-    var host = address.host;
-    var port = address.port;
-    // debug("REQUEST %d %s:%s", cmd, host, port);
     if (cmd == 0x01) { // connect
-      usock = upstream.connect(port, host);
-      usock.on('end', close);
-      usock.on('error', error);
-      usock.on('connect', function(){
-        // debug('%s -> %s', sock.remoteAddress, host);
-        // debug('%s BEGIN', sock.remoteAddress);
-        usock.setNoDelay(true);
-        usock.pipe(sock);
-	// usock.setTimeout(0);
-	// usock.setTimeout(transferTimeout, timeout);
-        sock.pipe(usock);
-	// sock.setTimeout(0);
-	// sock.setTimeout(transferTimeout, timeout);
-        var resp = new Buffer(d.length);
-        d.copy(resp);
-        resp[0] = 0x05;
-        resp[1] = 0x00;
-        resp[2] = 0x00;
-        sock.write(resp);
-      });
-      // usock.setTimeout(connectTimeout, timeout);
-      /*
-    } else if (cmd == 0x02) { // bind
-    } else if (cmd == 0x03) { // udp associate
-      */
+      connect(d);
+    //} else if (cmd == 0x02) { // bind
+    //} else if (cmd == 0x03) { // udp associate
     } else { // unsupport
       sock.end(new Buffer([0x05,0x07,0x00,0x01]));
       error('UNSUPPORT_CMD');
     }
   }
-  sock.on('data', handshake);
-  // sock.ondata = handshake;
-  sock.on('end', close);
+  function await(d){
+    buff.push(d);
+  }
+  function connect(d){
+    var address = socks5.decodeAddress(d,3);
+    if(address.length < d.length) buff.push(d.slice(address.length));
+    // debug("%s con %s:%s", sock.remoteAddress, address.host, address.port)
+    usock = upstream.createConnection(address.port, address.host);
+    usock.setTimeout(connectTimeout, timeout);
+    usock.on('error', error);
+    usock.on('end', close);
+    usock.on('connect', function(){
+      // debug("%s est %s:%s", sock.remoteAddress, address.host, address.port)
+      usock.setTimeout(transferTimeout, timeout);
+      usock.setNoDelay(true);
+      while(buff.length) usock.write(buff.shift());
+      sock.removeListener('data', await);
+      sock.pipe(usock);
+      // sock.setTimeout(transferTimeout, timeout);
+      sock.setNoDelay(true);
+      var resp = new Buffer(d.length);
+      d.copy(resp);
+      resp[0] = 0x05;
+      resp[1] = 0x00;
+      resp[2] = 0x00;
+      sock.write(resp);
+      usock.pipe(sock);
+    });
+  }
+  sock.setTimeout(transferTimeout, timeout);
+  // sock.setNoDelay(true);
   sock.on('error', error);
-  sock.setNoDelay(true);
-  // sock.setTimeout(transferTimeout, timeout);
+  sock.on('data', handshake);
+  sock.on('end', close);
 }
 
 // ----
@@ -117,6 +119,7 @@ function start(opt){
   });
   d.run(function(){
     var server = net.createServer();
+    // var server = socks5.createServer();
     server.on('listening', onListening);
     server.on('connection', onConnection);
     server.on('close', onClose);
@@ -126,7 +129,7 @@ function start(opt){
 }
 exports.start = start;
 
-// ---- 
+// ----
 
 if(!module.parent) {
   start({port:1080});

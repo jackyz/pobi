@@ -39,62 +39,53 @@ function serve(sock){
     debug('%s TIMEOUT', sock.remoteAddress);
     close();
   }
+  function await(en){
+    var d = shadow.decode(en);
+    buff.push(d);
+  }
   function request(en){
     sock.removeListener('data', request);
     sock.on('data', await);
-    // delete sock.ondata;
-    // todo check v5
     var d = shadow.decode(en);
-    // debug("req", d.toString('hex'));
     var address = socks5.decodeAddress(d,0);
-    var host = address.host;
-    var port = address.port;
-    var leng = address.length;
-    // debug("req", d.slice(leng).toString('utf8'));
-    if(leng < d.length) buff.push(d.slice(leng));
-    // debug("REQUEST %s:%s", host, port);
-    usock = upstream.connect(port, host);
-    usock.on('end', close);
+    // debug('address:%j', address);
+    if(address.length < d.length) buff.push(d.slice(address.length));
+    // debug("connect %s:%s", address.host, address.port)
+    usock = upstream.createConnection(address.port, address.host);
+    usock.setTimeout(connectTimeout, timeout);
     usock.on('error', error);
+    usock.on('end', close);
     usock.on('connect', function(){
-      // debug('%s -> %s', sock.remoteAddress, host);
       // debug('%s BEGIN', sock.remoteAddress);
+      usock.setTimeout(transferTimeout, timeout);
       usock.setNoDelay(true);
-      // usock.setTimeout(0);
-      // usock.setTimeout(transferTimeout, timeout);
       // usock.pipe(sock);
       usock.on('data', function(d){
-        // debug('<-', d);
+        // debug('<-', d.toString('utf8'));
         var en = shadow.encode(d);
         if(!sock.write(en)) usock.pause();
       });
       usock.on('end', function(){ sock.end(); });
       usock.on('drain', function(){ sock.resume(); });
-      sock.setNoDelay(true);
-      while(buff.length) usock.write(buff.shift());
-      sock.removeListener('data', await);
-      // sock.setTimeout(0);
+      while(buff.length) { usock.write(buff.shift()); }
       // sock.setTimeout(transferTimeout, timeout);
+      sock.setNoDelay(true);
+      sock.removeListener('data', await);
       // sock.pipe(usock);
       sock.on('data', function(en){
         var d = shadow.decode(en);
-        // debug('->', d);
+        // debug('->', d.toString('utf8'));
         if(!usock.write(d)) sock.pause();
       });
       sock.on('end', function(){ usock.end(); });
       sock.on('drain', function(){ usock.resume(); });
     });
-    // usock.setTimeout(connectTimeout, timeout);
   }
-  function await(en){
-    var d = shadow.decode(en);
-    buff.push(d);
-  }
-  sock.on('data', request);
-  // sock.ondata = handshake;
-  sock.on('end', close);
+  sock.setTimeout(transferTimeout, timeout);
+  // sock.setNoDelay(true);
   sock.on('error', error);
-  // sock.setTimeout(transferTimeout, timeout);
+  sock.on('data', request);
+  sock.on('end', close);
 }
 
 // ----
@@ -130,7 +121,7 @@ function start(opt){
 }
 exports.start = start;
 
-// ---- 
+// ----
 
 if(!module.parent) {
   start({port:7070});
