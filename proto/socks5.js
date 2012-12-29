@@ -6,29 +6,36 @@ var debug = require('debug')('PROTO:SOCKS5')
     // , sprintf = require('sprintf').sprintf;
     , config = require('../util/config');
 
-var _ip = config('proto', 'socks5', 'ip') || '127.0.0.1';
+var _host = config('proto', 'socks5', 'host') || '127.0.0.1';
 var _port = config('proto', 'socks5', 'port') || 7070;
-
-// debug('%s:%s selected', _ip, _port);
 
 // ---- socks5 client interface
 
-function connect(){
-  var h, p;
-  if (typeof arguments[0] == 'object') { // call by (options) params
-    var opt = arguments[0];
-    p = opt.port;
-    h = opt.host;
-  } else { // call by (port, host) params
-    p = arguments[0];
-    h = arguments[1];
+function createConnection(){ // port,host,options
+  var options = {};
+
+  if (typeof arguments[0] === 'object') {
+    options = arguments[0];
+  } else if (typeof arguments[1] === 'object') {
+    options = arguments[1];
+    options.port = arguments[0];
+  } else if (typeof arguments[2] === 'object') {
+    options = arguments[2];
+    options.port = arguments[0];
+    options.host = arguments[1];
+  } else {
+    if (typeof arguments[0] === 'number') {
+      options.port = arguments[0];
+    }
+    if (typeof arguments[1] === 'string') {
+      options.host = arguments[1];
+    }
   }
-  debug("==[%s:%s]==> %s:%s", _ip, _port, h, p);
-  var socks = new SocksClientSocket(_ip, _port);
-  return socks.connect(p, h);
+  var socks = new SocksClientSocket(_host, _port);
+  return socks.connect(options.port, options.host);
 };
 
-exports.connect = connect;
+exports.createConnection = createConnection;
 
 // ---- socks5 client implement
 
@@ -189,7 +196,7 @@ SocksClientSocket.prototype.connect_socks_to_host = function(host, port, cb) {
   };
 
   var buffer = [];
-  buffer.push(0x05);  // SOCKS version 
+  buffer.push(0x05);  // SOCKS version
   buffer.push(0x01);  // command code: establish a TCP/IP stream connection
   buffer.push(0x00);  // reserved - myst be 0x00
 
@@ -268,7 +275,7 @@ exports.encodeAddress = encodeAddress;
 // buffer : the Buffer or Array
 // offset : the offset of address data. 3 for socks5
 // return : {host:ip, port:int, length:int}
-function decodeAddress(buffer, offset){ 
+function decodeAddress(buffer, offset){
   var host = "";
   var host_len = 0;
   if (buffer[offset] == 0x01) { // ip v4
@@ -313,4 +320,3 @@ function get_error_message(code) {
       return 'Unknown status code ' + code;
   }
 }
-

@@ -6,35 +6,44 @@ var debug = require('debug')('PROTO:SHADOW')
     , socks5 = require('./socks5')
     , config = require('../util/config');
 
-var _ip = config('proto', 'shadow', 'ip') || '127.0.0.1';
+var _host = config('proto', 'shadow', 'host') || '127.0.0.1';
 var _port = config('proto', 'shadow', 'port') || 7070;
 var _pass = config('proto', 'shadow', 'pass') || "cool";
 
-// ---- shadow connect interface
+// ---- shadow client interface
 
-function connect(){
-  var h, p;
-  if (typeof arguments[0] == 'object') { // call by (options) params
-    var opt = arguments[0];
-    p = opt.port;
-    h = opt.host;
-  } else { // call by (port, host) params
-    p = arguments[0];
-    h = arguments[1];
+function createConnection(){ // port,host,options
+  var options = {};
+
+  if (typeof arguments[0] === 'object') {
+    options = arguments[0];
+  } else if (typeof arguments[1] === 'object') {
+    options = arguments[1];
+    options.port = arguments[0];
+  } else if (typeof arguments[2] === 'object') {
+    options = arguments[2];
+    options.port = arguments[0];
+    options.host = arguments[1];
+  } else {
+    if (typeof arguments[0] === 'number') {
+      options.port = arguments[0];
+    }
+    if (typeof arguments[1] === 'string') {
+      options.host = arguments[1];
+    }
   }
-  debug("==[%s:%s#%s]==> %s:%s", _ip, _port, _pass, h, p);
-  var socks = new ShadowSocks(_ip, _port, _pass);
-  return socks.connect(p, h);
+  var socks = new ShadowSocks(_host, _port, _pass);
+  return socks.connect(options.port, options.host);
 };
 
-exports.connect = connect;
+exports.createConnection = createConnection;
 
 // ---- shadow encode decode
 
 var Max = Math.pow(2,32);
 
 function merge_sort(array, comp){
-  
+
   function merge(left, right) {
     var result = new Array();
     while ((left.length > 0) && (right.length > 0)) {
@@ -47,13 +56,13 @@ function merge_sort(array, comp){
     while (right.length > 0) result.push(right.shift());
     return result;
   }
-  
+
   if (array.length < 2) return array;
   var middle = Math.ceil(array.length / 2);
   return merge(
     merge_sort(array.slice(0, middle), comp),
     merge_sort(array.slice(middle), comp)
-  ); 
+  );
 }
 
 function genTable(key){
@@ -92,6 +101,7 @@ function trans(table, buf){
 }
 
 function encode(buf){
+  var b = Buffer.isBuffer(buf) ? buf : new Buffer(buf);
   return trans(_en_table, buf);
 };
 function decode(buf){
@@ -221,10 +231,6 @@ ShadowSocks.prototype.establish_socks_connection = function(host, port) {
 
 ShadowSocks.prototype.connect_socks_to_host = function(host, port, cb) {
   var buffer = socks5.encodeAddress({host:host, port:port});
-  var en = encode(new Buffer(buffer));
-
-  this.socket.write(en);
-
+  this.write(buffer);
   if(cb) cb();
-
 }

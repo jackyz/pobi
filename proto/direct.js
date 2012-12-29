@@ -4,20 +4,28 @@ var debug = require('debug')('PROTO:DIRECT')
 
 // Socket
 
-function connect(){
-  var h, p;
-  if (typeof arguments[0] == 'object') { // call by (options) params
-    var opt = arguments[0];
-    p = opt.port;
-    h = opt.host;
-  } else { // call by (port, host) params
-    p = arguments[0];
-    h = arguments[1];
+function createConnection(){ // port,host,options
+  var options = {};
+
+  if (typeof arguments[0] === 'object') {
+    options = arguments[0];
+  } else if (typeof arguments[1] === 'object') {
+    options = arguments[1];
+    options.port = arguments[0];
+  } else if (typeof arguments[2] === 'object') {
+    options = arguments[2];
+    options.port = arguments[0];
+    options.host = arguments[1];
+  } else {
+    if (typeof arguments[0] === 'number') {
+      options.port = arguments[0];
+    }
+    if (typeof arguments[1] === 'string') {
+      options.host = arguments[1];
+    }
   }
-  debug("==[]==> %s:%s", h, p);
   var socks = new net.Socket();
-  return socks.connect(p, h);
+  return socks.connect(options.port, options.host);
 };
 
-exports.connect = connect;
-// exports.connect = net.connect;
+exports.createConnection = createConnection;

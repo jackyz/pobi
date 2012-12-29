@@ -22,24 +22,28 @@
     "socks5": {},
     "proto": "shadow"
   },
+  "worker": {
+    "shadow": {
+    },
+    "http": {
+    },
+    "socks5": {
+    }
+  }
   "proto": {
     "direct": {},
     "socks5": {
-      "ip": "127.0.0.1",
+      "host": "127.0.0.1",
       "port": 7070
     },
     "shadow": {
-      "ip": "127.0.0.1",
+      "host": "127.0.0.1",
       "port": 7070,
       "pass": "cool"
     },
-    "mask": {
-    }
-  },
-  "worker": {
-    "socks5": {},
-    "shadow": {
-      "pass": "cool"
+    "http": {
+      "host": "127.0.0.1",
+      "port": 7070
     }
   },
   "helper": {
