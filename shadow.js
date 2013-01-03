@@ -3,6 +3,7 @@ var debug = require('debug')('SHADOW')
     , net = require('net')
     , util = require('util')
     , d = require('domain').create()
+    , upstream = require('./upstream')
     , socks5 = require('../proto/socks5')
     , shadow = require('../proto/shadow');
 
@@ -10,12 +11,6 @@ var debug = require('debug')('SHADOW')
 
 var connectTimeout = 2000; // 2 second
 var transferTimeout = 30000; // 30 second
-
-// ---- upstream socket
-
-var protocol = 'direct'; // no proxy chain, just direct
-
-var upstream = require('../proto/'+protocol);
 
 // ----
 
@@ -50,7 +45,7 @@ function serve(sock){
     // debug('address:%j', address);
     if(address.length < d.length) buff.push(d.slice(address.length));
     // debug("connect %s:%s", address.host, address.port)
-    usock = upstream.createConnection(address.port, address.host);
+    usock = self.upstream.createConnection(address.port, address.host);
     usock.setTimeout(connectTimeout, timeout);
     usock.on('error', error);
     usock.on('end', close);
@@ -89,8 +84,15 @@ function serve(sock){
 
 // ----
 
-function start(opt){
-  var port = opt.port || 7070;
+function start(config){
+  // init
+  var port = config.port || 1070;
+  var host = config.host || '0.0.0.0';
+  var pass = config.pass || 'cool';
+  var self = this;
+  self.upstream = upstream(config.upstream);
+  self.pass = pass;
+  //
   var onListening = function(){
     debug("listening on %j", this.address());
   };
@@ -115,13 +117,14 @@ function start(opt){
     server.on('connection', onConnection);
     server.on('close', onClose);
     server.on('error', onError);
-    server.listen(port);
+    server.listen(port, host);
   });
 }
 exports.start = start;
 
 // ----
-
+/*
 if(!module.parent) {
   start({port:7070});
 }
+*/

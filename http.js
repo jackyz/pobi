@@ -3,6 +3,7 @@ var debug = require('debug')('HTTP')
     , url = require('url')
     , net = require('net')
     , util = require('util')
+    , upstream = require('./upstream')
     , d = require('domain').create();
 
 // ---- timeout
@@ -10,30 +11,14 @@ var debug = require('debug')('HTTP')
 var connectTimeout = 2000; // 2 second
 var transferTimeout = 30000; // 30 second
 
-// ---- upstream socket
-
-var protocol = config('local','proto') || 'direct';
-
-var upstream = require('../proto/'+protocol);
-
-// ---- upstream agent
-
-function Agent(options) {
-  http.Agent.call(this, options);
-  this.createConnection = upstream.createConnection;
-}
-util.inherits(Agent, http.Agent);
-Agent.prototype.maxSockets = 32;
-
-var agent = new Agent();
-
 // ----
 
 function tunnel(req, sock, head){
   var self = this;
   debug("connections:%s", self.connections);
   var o = url.parse('http://'+req.url);
-  var usock = upstream.createConnection(o.port, o.hostname);
+  // var usock = upstream.createConnection(o.port, o.hostname);
+  var usock = self.upstream.createConnection(o.port, o.hostname);
   function close(){
     debug("connections:%s", self.connections);
     // debug('%s : tunnel %s %s END', req.ip, req.method, req.url);
@@ -88,7 +73,7 @@ function proxy(req, res){
     path: o.path,
     method: req.method,
     headers: headers, // req.headers,
-    agent: agent // using the upstream.createConnections
+    agent: self.upstream.createAgent() // using the upstream.createConnections
     // agent: false, // using the original http
   };
   var ureq = http.request(ropts);
@@ -127,8 +112,13 @@ function proxy(req, res){
 
 // ----
 
-function start(opt){
-  var port = opt.port || 8080;
+function start(config){
+  // init
+  var port = config.port || 1080;
+  var host = config.host || '0.0.0.0';
+  var self = this;
+  self.upstream = upstream(config.upstream);
+  //
   var onListening = function(){
     debug("listening on %j", this.address());
   };
@@ -158,13 +148,15 @@ function start(opt){
     server.on('connect', onConnect);
     server.on('close', onClose);
     server.on('error', onError);
-    server.listen(port);
+    server.listen(port, host);
   });
 }
+
 exports.start = start;
 
 // ----
-
+/*
 if(!module.parent) {
   start({port:8080});
 }
+*/

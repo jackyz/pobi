@@ -26,7 +26,15 @@
     "http": {
       "port": 8080,
       "host": "0.0.0.0",
-      "pass": "cool",
+      "upstream": {
+        "type": "direct"
+      }
+    }
+  },
+  "proxy": {
+    "http": {
+      "port": 8080,
+      "host": "0.0.0.0",
       "upstream": {
         "type": "socks5",
         "port": 1060,

@@ -1,5 +1,5 @@
 var debug = require('debug')('LOCAL')
-    , config = require('../util/config');
+    , config = require('./config');
 
 /*
 // node http leaks socket, bug 3536

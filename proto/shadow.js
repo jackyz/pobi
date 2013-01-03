@@ -3,40 +3,19 @@ var debug = require('debug')('PROTO:SHADOW')
     , util = require('util')
     , stream = require('stream')
     , crypto = require('crypto')
-    , socks5 = require('./socks5')
-    , config = require('../util/config');
+    , socks5 = require('./socks5');
 
-var _host = config('proto', 'shadow', 'host') || '127.0.0.1';
-var _port = config('proto', 'shadow', 'port') || 7070;
-var _pass = config('proto', 'shadow', 'pass') || "cool";
+// ---- exports
 
-// ---- shadow client interface
-
-function createConnection(){ // port,host,options
-  var options = {};
-
-  if (typeof arguments[0] === 'object') {
-    options = arguments[0];
-  } else if (typeof arguments[1] === 'object') {
-    options = arguments[1];
-    options.port = arguments[0];
-  } else if (typeof arguments[2] === 'object') {
-    options = arguments[2];
-    options.port = arguments[0];
-    options.host = arguments[1];
-  } else {
-    if (typeof arguments[0] === 'number') {
-      options.port = arguments[0];
-    }
-    if (typeof arguments[1] === 'string') {
-      options.host = arguments[1];
-    }
-  }
-  var socks = new ShadowSocks(_host, _port, _pass);
-  return socks.connect(options.port, options.host);
-};
-
-exports.createConnection = createConnection;
+exports.init = function(options){
+  var host = options.host || '127.0.0.1';
+  var port = options.port || 7070;
+  var pass = options.pass || 'cool';
+  var socks = new ShadowSocks(host, port, pass);
+  return socks;
+}
+exports.encodeAddress = socks5.encodeAddress;
+exports.decodeAddress = socks5.decodeAddress;
 
 // ---- shadow encode decode
 

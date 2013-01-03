@@ -2,21 +2,15 @@ var debug = require('debug')('DNS')
     , _ = require('underscore')
     , ndns = require('native-dns');
 
-var uip = config('local','dns', 'upstream', 'ip') || '8.8.8.8';
-var uport = config('local', 'dns', 'upstream', 'port') || 53;
-var uprotocol = config('local','dns', 'upstream', 'protocol') || 'udp';
-
-var gfw_domains = config('local','dns', 'gfw') || ['twitter.com','facebook.com'];
-
 var wpad_domain = 'wpad';
-var wpad_ip = config('local','dns', 'wpad') || '127.0.0.1';
 var timeout = 2000;
 
 function forwardQuery(q, cb){
+  var self = this;
   var result = [];
   var ureq = ndns.Request({
     question: q,
-    server: { address: uip, port: uport, type: uprotocol },
+    server: self.upstream,
     timeout: timeout
     // cache: false
   });
@@ -34,10 +28,11 @@ function forwardQuery(q, cb){
 }
 
 function resolveGfw(domain, cb){
+  var self = this;
   var result = [];
   var ureq = ndns.Request({
     question: { name:domain, type:1, class:1 },
-    server: { address: uip, port: uport, type: uprotocol },
+    server: self.upstream,
     timeout: timeout,
     obstruct: true // to drop obstruct packet from gfw
     // cache: false
@@ -65,10 +60,24 @@ function endsWith(str, postfix){
 }
 
 function isGfwed(domain){
-  return _(gfw_domains).any(function(s){ return endsWith(domain,s); });
+  var self = this;
+  return _(self.gfw).any(function(s){ return endsWith(domain,s); });
 }
 
-function start(opt){
+function start(config){
+  // init
+  var port = config.port || 53; // dns must on 53
+  var host = config.host || '127.0.0.1';
+  var upstream = {
+    address: config.upstream.host || '8.8.8.8',
+    port: config.upstream.port || 53,
+    type: config.upstream.protocol || 'udp'
+  };
+  var self = this;
+  self.upstream = upstream;
+  self.gfw = config.gfw || ['twitter.com','facebook.com'];
+  self.wpad = config.wpad || '127.0.0.1';
+  //
   var onListening = function(){
     debug("listening on %j", this.address());
   };
@@ -76,6 +85,7 @@ function start(opt){
     req.ip = req._socket._remote.address;
     var q = req.question[0];
     var d = q.name;
+    var wpad_ip = self.wpad || '127.0.0.1';
     if(q['type'] == 1 && q['class'] == 1 && startsWith(d,wpad_domain)) {
       // resolve WPAD name
       res.answer.push(ndns.A({
@@ -140,22 +150,25 @@ function start(opt){
   var onError = function(err, buff, req, res){
     debug("error", err, buff, req, res);
   }
-  var port = opt.port || 53; // dns must on 53
   var udpServer = ndns.createServer();
   udpServer.on('listening', onListening);
   udpServer.on('request', onRequest);
   udpServer.on('close', onClose);
   udpServer.on('error', onError);
-  udpServer.serve(port);
+  udpServer.serve(port, host);
   var tcpServer = ndns.createTCPServer();
   tcpServer.on('listening', onListening);
   tcpServer.on('request', onRequest);
   tcpServer.on('close', onClose);
   tcpServer.on('error', onError);
-  tcpServer.serve(port);
+  tcpServer.serve(port, host);
 }
+
 exports.start = start;
 
+// ----
+/*
 if(!module.parent) {
   start({port:53});
 }
+*/

@@ -1,41 +1,18 @@
 var debug = require('debug')('PROTO:SOCKS5')
     , net = require('net')
     , util = require('util')
-    , stream = require('stream')
-    // , events = require('events')
-    // , sprintf = require('sprintf').sprintf;
-    , config = require('../util/config');
+    , stream = require('stream');
 
-var _host = config('proto', 'socks5', 'host') || '127.0.0.1';
-var _port = config('proto', 'socks5', 'port') || 7070;
+// ---- exports
 
-// ---- socks5 client interface
-
-function createConnection(){ // port,host,options
-  var options = {};
-
-  if (typeof arguments[0] === 'object') {
-    options = arguments[0];
-  } else if (typeof arguments[1] === 'object') {
-    options = arguments[1];
-    options.port = arguments[0];
-  } else if (typeof arguments[2] === 'object') {
-    options = arguments[2];
-    options.port = arguments[0];
-    options.host = arguments[1];
-  } else {
-    if (typeof arguments[0] === 'number') {
-      options.port = arguments[0];
-    }
-    if (typeof arguments[1] === 'string') {
-      options.host = arguments[1];
-    }
-  }
-  var socks = new SocksClientSocket(_host, _port);
-  return socks.connect(options.port, options.host);
-};
-
-exports.createConnection = createConnection;
+exports.init = function(options){
+  var host = options.host || '127.0.0.1';
+  var port = options.port || 7070;
+  var socks = new SocksClientSocket(host, port);
+  return socks;
+}
+exports.encodeAddress = encodeAddress;
+exports.decodeAddress = decodeAddress;
 
 // ---- socks5 client implement
 
@@ -270,8 +247,6 @@ function encodeAddress(options){
   return buffer;
 }
 
-exports.encodeAddress = encodeAddress;
-
 // buffer : the Buffer or Array
 // offset : the offset of address data. 3 for socks5
 // return : {host:ip, port:int, length:int}
@@ -295,8 +270,6 @@ function decodeAddress(buffer, offset){
   // debug("decodeAddress(%s,%s):%j", buffer.toString('hex'), offset, result);
   return result;
 }
-
-exports.decodeAddress = decodeAddress;
 
 function get_error_message(code) {
   switch(code) {

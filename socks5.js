@@ -3,19 +3,13 @@ var debug = require('debug')('SOCKS5')
     , net = require('net')
     , util = require('util')
     , d = require('domain').create()
-    , socks5 = require('../proto/socks5')
-    , config = require('../util/config');
+    , upstream = require('./upstream')
+    , socks5 = require('../proto/socks5');
 
 // ---- timeout
 
 var connectTimeout = 2000; // 2 second
 var transferTimeout = 30000; // 30 second
-
-// ---- upstream socket
-
-var protocol = config('local','proto') || 'direct';
-
-var upstream = require('../proto/'+protocol);
 
 // ----
 
@@ -66,7 +60,7 @@ function serve(sock){
     var address = socks5.decodeAddress(d,3);
     if(address.length < d.length) buff.push(d.slice(address.length));
     // debug("%s con %s:%s", sock.remoteAddress, address.host, address.port)
-    usock = upstream.createConnection(address.port, address.host);
+    usock = self.upstream.createConnection(address.port, address.host);
     usock.setTimeout(connectTimeout, timeout);
     usock.on('error', error);
     usock.on('end', close);
@@ -97,8 +91,13 @@ function serve(sock){
 
 // ----
 
-function start(opt){
-  var port = opt.port || 1080;
+function start(config){
+  // init
+  var port = config.port || 1060;
+  var host = config.host || '0.0.0.0';
+  var self = this;
+  self.upstream = upstream(config.upstream);
+  //
   var onListening = function(){
     debug("listening on %j", this.address());
   };
@@ -130,7 +129,8 @@ function start(opt){
 exports.start = start;
 
 // ----
-
+/*
 if(!module.parent) {
   start({port:1080});
 }
+*/
