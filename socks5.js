@@ -33,6 +33,7 @@ function serve(sock){
     close();
   }
   function handshake(d){
+    // debug('%s HANDSHAKE', sock.remoteAddress);
     sock.removeListener('data', handshake);
     sock.on('data', command);
     // todo check v5
@@ -40,6 +41,7 @@ function serve(sock){
     sock.write(new Buffer([0x05, 0x00])); // socks5 noauth
   }
   function command(d){
+    // debug('%s COMMAND', sock.remoteAddress);
     sock.removeListener('data', command);
     sock.on('data', await);
     // todo check v5
@@ -54,9 +56,11 @@ function serve(sock){
     }
   }
   function await(d){
+    // debug('%s AWAIT', sock.remoteAddress);
     buff.push(d);
   }
   function connect(d){
+    // debug('%s CONNECT', sock.remoteAddress);
     var address = socks5.decodeAddress(d,3);
     if(address.length < d.length) buff.push(d.slice(address.length));
     // debug("%s con %s:%s", sock.remoteAddress, address.host, address.port)
@@ -65,7 +69,8 @@ function serve(sock){
     usock.on('error', error);
     usock.on('end', close);
     usock.on('connect', function(){
-      // debug("%s est %s:%s", sock.remoteAddress, address.host, address.port)
+      // debug('%s CONNECTED', sock.remoteAddress);
+      // debug("%s -> %s:%s", sock.remoteAddress, address.host, address.port)
       usock.setTimeout(transferTimeout, timeout);
       usock.setNoDelay(true);
       while(buff.length) usock.write(buff.shift());

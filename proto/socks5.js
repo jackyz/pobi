@@ -3,17 +3,6 @@ var debug = require('debug')('PROTO:SOCKS5')
     , util = require('util')
     , stream = require('stream');
 
-// ---- exports
-
-exports.init = function(options){
-  var host = options.host || '127.0.0.1';
-  var port = options.port || 7070;
-  var socks = new SocksClientSocket(host, port);
-  return socks;
-}
-exports.encodeAddress = encodeAddress;
-exports.decodeAddress = decodeAddress;
-
 // ---- socks5 client implement
 
 // original
@@ -293,3 +282,14 @@ function get_error_message(code) {
       return 'Unknown status code ' + code;
   }
 }
+
+// ---- exports
+
+exports.init = function(options){
+  var host = options.host || '127.0.0.1';
+  var port = options.port || 7070;
+  var socks = new SocksClientSocket(host, port);
+  return socks;
+}
+exports.encodeAddress = encodeAddress;
+exports.decodeAddress = decodeAddress;

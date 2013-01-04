@@ -5,25 +5,6 @@ var debug = require('debug')('PROTO:SHADOW')
     , crypto = require('crypto')
     , socks5 = require('./socks5');
 
-var encodeAddress = socks5.encodeAddress;
-var decodeAddress = socks5.decodeAddress;
-
-// ---- exports
-
-exports.init = function(options){
-  var host = options.host || '127.0.0.1';
-  var port = options.port || 7070;
-  var pass = options.pass || 'cool';
-  var socks = new ShadowSocks(host, port, pass);
-  return socks;
-}
-
-exports.encodeAddress = encodeAddress;
-exports.decodeAddress = decodeAddress;
-
-exports.genTable = genTable;
-exports.mapTable = mapTable;
-
 // ---- shadow encode decode
 
 var Max = Math.pow(2,32);
@@ -51,7 +32,7 @@ function merge_sort(array, comp){
   );
 }
 
-function genTable(key){
+function _genTable(key){ // really slow need cache
   var md5 = crypto.createHash('md5');
   md5.update(key);
   var hash = new Buffer(md5.digest(), 'binary');
@@ -71,6 +52,17 @@ function genTable(key){
     de_table[en_table[i]] = i;
   }
   return [en_table, de_table];
+}
+
+var _tables = {};
+
+function genTable(key){
+  var t = _tables[key];
+  if (!t){ 
+    t = _genTable(key);
+    _tables[key] = t;
+  }
+  return t;
 }
 
 function mapTable(table, buf){
@@ -208,3 +200,22 @@ ShadowSocks.prototype.connect_socks_to_host = function(host, port, cb) {
   this.write(buffer);
   if(cb) cb();
 }
+
+// ---- exports
+
+var encodeAddress = socks5.encodeAddress;
+var decodeAddress = socks5.decodeAddress;
+
+exports.init = function(options){
+  var host = options.host || '127.0.0.1';
+  var port = options.port || 7070;
+  var pass = options.pass || 'cool';
+  var socks = new ShadowSocks(host, port, pass);
+  return socks;
+}
+
+exports.encodeAddress = encodeAddress;
+exports.decodeAddress = decodeAddress;
+
+exports.genTable = genTable;
+exports.mapTable = mapTable;

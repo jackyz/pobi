@@ -13,7 +13,9 @@ module.exports = function(config){
     // debug('init upstream %j', config);
     // ---- createConnection
     function createConnection(){
+      // debug("init");
       var sock = require('./'+protocol).init(config);
+      // debug("init");
       var options = {};
       if (typeof arguments[0] === 'object') {
 	options = arguments[0];

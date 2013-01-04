@@ -32,13 +32,19 @@ function serve(sock){
     debug('%s TIMEOUT', sock.remoteAddress);
     close();
   }
+  function command(d){
+    // debug('%s COMMAND', sock.remoteAddress);
+    sock.removeListener('data', command);
+    sock.on('data', await);
+    connect(d);
+  }
   function await(en){
+    // debug('%s AWAIT', sock.remoteAddress);
     var d = shadow.mapTable(self._de_table, en);
     buff.push(d);
   }
-  function request(en){
-    sock.removeListener('data', request);
-    sock.on('data', await);
+  function connect(en){
+    // debug('%s CONNECT', sock.remoteAddress);
     var d = shadow.mapTable(self._de_table, en);
     var address = shadow.decodeAddress(d,0);
     // debug('address:%j', address);
@@ -49,20 +55,11 @@ function serve(sock){
     usock.on('error', error);
     usock.on('end', close);
     usock.on('connect', function(){
-      // debug('%s BEGIN', sock.remoteAddress);
+      // debug('%s CONNECTED', sock.remoteAddress);
+      // debug("%s -> %s:%s", sock.remoteAddress, address.host, address.port)
       usock.setTimeout(transferTimeout, timeout);
       usock.setNoDelay(true);
-      // usock.pipe(sock);
-      usock.on('data', function(d){
-        // debug('<-', d.toString('utf8'));
-        var en = shadow.mapTable(self._en_table, d);
-        if(!sock.write(en)) usock.pause();
-      });
-      usock.on('end', function(){ sock.end(); });
-      usock.on('drain', function(){ sock.resume(); });
       while(buff.length) { usock.write(buff.shift()); }
-      // sock.setTimeout(transferTimeout, timeout);
-      sock.setNoDelay(true);
       sock.removeListener('data', await);
       // sock.pipe(usock);
       sock.on('data', function(en){
@@ -72,12 +69,22 @@ function serve(sock){
       });
       sock.on('end', function(){ usock.end(); });
       sock.on('drain', function(){ usock.resume(); });
+      // sock.setTimeout(transferTimeout, timeout);
+      sock.setNoDelay(true);
+      // usock.pipe(sock);
+      usock.on('data', function(d){
+        // debug('<-', d.toString('utf8'));
+        var en = shadow.mapTable(self._en_table, d);
+        if(!sock.write(en)) usock.pause();
+      });
+      usock.on('end', function(){ sock.end(); });
+      usock.on('drain', function(){ sock.resume(); });
     });
   }
   sock.setTimeout(transferTimeout, timeout);
   // sock.setNoDelay(true);
   sock.on('error', error);
-  sock.on('data', request);
+  sock.on('data', command);
   sock.on('end', close);
 }
 
