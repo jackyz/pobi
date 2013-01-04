@@ -5,6 +5,9 @@ var debug = require('debug')('PROTO:SHADOW')
     , crypto = require('crypto')
     , socks5 = require('./socks5');
 
+var encodeAddress = socks5.encodeAddress;
+var decodeAddress = socks5.decodeAddress;
+
 // ---- exports
 
 exports.init = function(options){
@@ -14,8 +17,12 @@ exports.init = function(options){
   var socks = new ShadowSocks(host, port, pass);
   return socks;
 }
-exports.encodeAddress = socks5.encodeAddress;
-exports.decodeAddress = socks5.decodeAddress;
+
+exports.encodeAddress = encodeAddress;
+exports.decodeAddress = decodeAddress;
+
+exports.genTable = genTable;
+exports.mapTable = mapTable;
 
 // ---- shadow encode decode
 
@@ -66,29 +73,14 @@ function genTable(key){
   return [en_table, de_table];
 }
 
-var tables = genTable(_pass);
-
-var _en_table = tables[0];
-var _de_table = tables[1];
-
-function trans(table, buf){
-  var buf2 = new Buffer(buf.length);
-  for(var i=0; i<buf.length; i++){
-    buf2[i] = table[buf[i]];
+function mapTable(table, buf){
+  var buf1 = Buffer.isBuffer(buf) ? buf : new Buffer(buf);
+  var buf2 = new Buffer(buf1.length);
+  for(var i=0; i<buf1.length; i++){
+    buf2[i] = table[buf1[i]];
   }
   return buf2;
 }
-
-function encode(buf){
-  var b = Buffer.isBuffer(buf) ? buf : new Buffer(buf);
-  return trans(_en_table, buf);
-};
-function decode(buf){
-  return trans(_de_table, buf);
-};
-
-exports.encode = encode;
-exports.decode = decode;
 
 /*
 var buff1 = new Buffer("abcdefg");
@@ -108,6 +100,9 @@ function ShadowSocks(host, port, pass) {
   this._host = host;
   this._port = port;
   this._pass = pass;
+  var tables = genTable(pass);
+  this._en_table = tables[0];
+  this._de_table = tables[1];
 }
 //inherits(ShadowSocks, net.Socket);
 //inherits(ShadowSocks, events.EventEmitter);
@@ -155,7 +150,7 @@ ShadowSocks.prototype.setEncoding = function(encoding) {
 };
 
 ShadowSocks.prototype.write = function(data, arg1, arg2) {
-  var en = encode(data);
+  var en = mapTable(this._en_table, data);
   return this.socket.write(en, arg1, arg2);
 };
 
@@ -184,7 +179,7 @@ ShadowSocks.prototype.establish_socks_connection = function(host, port) {
 
   self.connect_socks_to_host(host, port, function() {
     self.socket.on('data', function(data) {
-      var de = decode(data);
+      var de = mapTable(self._de_table, data);
       self.emit('data', de);
     });
 
@@ -209,7 +204,7 @@ ShadowSocks.prototype.establish_socks_connection = function(host, port) {
 };
 
 ShadowSocks.prototype.connect_socks_to_host = function(host, port, cb) {
-  var buffer = socks5.encodeAddress({host:host, port:port});
+  var buffer = encodeAddress({host:host, port:port});
   this.write(buffer);
   if(cb) cb();
 }

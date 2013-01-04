@@ -1,19 +1,19 @@
 {
   "local": {
     "dns": {
-      "port": 53,
       "host": "0.0.0.0",
+      "port": 53,
       "upstream": {
         "host": "8.8.8.8",
         "port": 53,
         "protocol": "udp"
       },
-      "wpad": "127.0.0.1",
-      "gfw": ["twitter.com", "facebook.com"]
+      "gfw": ["twitter.com", "facebook.com"],
+      "wpad": "127.0.0.1"
     },
     "wpad": {
-      "port": 80,
       "host": "0.0.0.0",
+      "port": 80,
       "pac": {
         "template": "gfw.pac.tmpl",
         "proxy": {
@@ -24,54 +24,55 @@
       }
     },
     "http": {
-      "port": 8080,
       "host": "0.0.0.0",
-      "upstream": {
-        "type": "direct"
-      }
-    }
-  },
-  "proxy": {
-    "http": {
       "port": 8080,
-      "host": "0.0.0.0",
-      "upstream": {
+      "proto": {
         "type": "socks5",
-        "port": 1060,
-        "host": "127.0.0.1"
+	"host": "127.0.0.1",
+        "port": 7070
       }
     },
     "socks5": {
-      "port": 7070,
       "host": "0.0.0.0",
-      "upstream": {
+      "port": 7070,
+      "proto": {
         "type": "shadow",
-        "port": 1070,
-        "host": "127.0.0.1",
-        "pass": "cool"
+	"host": "127.0.0.1",
+	"port": 1027,
+	"pass": "cool"
       }
     }
   },
   "worker": {
-    "http": {
-      "port": 1080,
-      "host": "0.0.0.0",
-      "upstream": {
-        "type": "direct"
-      }
-    },
     "socks5": {
-      "port": 1060,
+      "port": 1026,
       "host": "0.0.0.0",
-      "upstream": {
+      "proto": {
         "type": "direct"
       }
     },
     "shadow": {
-      "port": 1070,
+      "host": "0.0.0.0",
+      "port": 1027,
+      "pass": "cool",
+      "proto": {
+        "type": "direct"
+      }
+    }
+  },
+  "debug": {
+    "http": {
+      "port": 1025,
+      "host": "0.0.0.0",
+      "proto": {
+        "type": "direct"
+      }
+    },
+    "shadow": {
+      "port": 1027,
       "host": "0.0.0.0",
       "pass": "cool",
-      "upstream": {
+      "proto": {
         "type": "direct"
       }
     }

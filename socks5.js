@@ -3,8 +3,8 @@ var debug = require('debug')('SOCKS5')
     , net = require('net')
     , util = require('util')
     , d = require('domain').create()
-    , upstream = require('./upstream')
-    , socks5 = require('../proto/socks5');
+    , proto = require('./proto')
+    , socks5 = require('./proto/socks5');
 
 // ---- timeout
 
@@ -60,7 +60,7 @@ function serve(sock){
     var address = socks5.decodeAddress(d,3);
     if(address.length < d.length) buff.push(d.slice(address.length));
     // debug("%s con %s:%s", sock.remoteAddress, address.host, address.port)
-    usock = self.upstream.createConnection(address.port, address.host);
+    usock = self.proto.createConnection(address.port, address.host);
     usock.setTimeout(connectTimeout, timeout);
     usock.on('error', error);
     usock.on('end', close);
@@ -95,11 +95,9 @@ function start(config){
   // init
   var port = config.port || 1060;
   var host = config.host || '0.0.0.0';
-  var self = this;
-  self.upstream = upstream(config.upstream);
   //
   var onListening = function(){
-    debug("listening on %j", this.address());
+    debug("listening on %j via %j", this.address(), this.proto.config);
   };
   var onConnection = function(sock){
     // debug("%s connect", sock.remoteAddress);
@@ -119,6 +117,7 @@ function start(config){
   d.run(function(){
     var server = net.createServer();
     // var server = socks5.createServer();
+    server.proto = proto(config.proto);
     server.on('listening', onListening);
     server.on('connection', onConnection);
     server.on('close', onClose);

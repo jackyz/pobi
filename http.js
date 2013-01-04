@@ -3,7 +3,7 @@ var debug = require('debug')('HTTP')
     , url = require('url')
     , net = require('net')
     , util = require('util')
-    , upstream = require('./upstream')
+    , proto = require('./proto')
     , d = require('domain').create();
 
 // ---- timeout
@@ -17,8 +17,8 @@ function tunnel(req, sock, head){
   var self = this;
   debug("connections:%s", self.connections);
   var o = url.parse('http://'+req.url);
-  // var usock = upstream.createConnection(o.port, o.hostname);
-  var usock = self.upstream.createConnection(o.port, o.hostname);
+  // var usock = proto.createConnection(o.port, o.hostname);
+  var usock = self.proto.createConnection(o.port, o.hostname);
   function close(){
     debug("connections:%s", self.connections);
     // debug('%s : tunnel %s %s END', req.ip, req.method, req.url);
@@ -73,7 +73,7 @@ function proxy(req, res){
     path: o.path,
     method: req.method,
     headers: headers, // req.headers,
-    agent: self.upstream.createAgent() // using the upstream.createConnections
+    agent: self.proto.agent // using the proto
     // agent: false, // using the original http
   };
   var ureq = http.request(ropts);
@@ -116,11 +116,9 @@ function start(config){
   // init
   var port = config.port || 1080;
   var host = config.host || '0.0.0.0';
-  var self = this;
-  self.upstream = upstream(config.upstream);
   //
   var onListening = function(){
-    debug("listening on %j", this.address());
+    debug("listening on %j via %j", this.address(), this.proto.config);
   };
   var onRequest = function(req, res){
     req.ip = req.connection.remoteAddress;
@@ -143,6 +141,7 @@ function start(config){
   });
   d.run(function(){
     var server = http.createServer();
+    server.proto = proto(config.proto);
     server.on('listening', onListening);
     server.on('request', onRequest);
     server.on('connect', onConnect);
