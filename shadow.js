@@ -40,12 +40,12 @@ function serve(sock){
   }
   function await(en){
     // debug('%s AWAIT', sock.remoteAddress);
-    var d = shadow.mapTable(self._de_table, en);
+    var d = shadow.decode(self.pass, en);
     buff.push(d);
   }
   function connect(en){
     // debug('%s CONNECT', sock.remoteAddress);
-    var d = shadow.mapTable(self._de_table, en);
+    var d = shadow.decode(self.pass, en);
     var address = shadow.decodeAddress(d,0);
     // debug('address:%j', address);
     if(address.length < d.length) buff.push(d.slice(address.length));
@@ -63,7 +63,7 @@ function serve(sock){
       sock.removeListener('data', await);
       // sock.pipe(usock);
       sock.on('data', function(en){
-        var d = shadow.mapTable(self._de_table, en);
+        var d = shadow.decode(self.pass, en);
         // debug('->', d.toString('utf8'));
         if(!usock.write(d)) sock.pause();
       });
@@ -74,7 +74,7 @@ function serve(sock){
       // usock.pipe(sock);
       usock.on('data', function(d){
         // debug('<-', d.toString('utf8'));
-        var en = shadow.mapTable(self._en_table, d);
+        var en = shadow.encode(self.pass, d);
         if(!sock.write(en)) usock.pause();
       });
       usock.on('end', function(){ sock.end(); });
@@ -117,9 +117,6 @@ function start(config){
     var server = net.createServer();
     server.proto = proto(config.proto);
     server.pass = config.pass || 'cool';
-    var tables = shadow.genTable(server.pass);
-    server._en_table = tables[0];
-    server._de_table = tables[1];
     server.on('listening', onListening);
     server.on('connection', onConnection);
     server.on('close', onClose);

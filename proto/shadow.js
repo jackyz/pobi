@@ -32,7 +32,7 @@ function merge_sort(array, comp){
   );
 }
 
-function _genTable(key){ // really slow need cache
+function genTable(key){ // really slow, need cache
   var md5 = crypto.createHash('md5');
   md5.update(key);
   var hash = new Buffer(md5.digest(), 'binary');
@@ -56,10 +56,10 @@ function _genTable(key){ // really slow need cache
 
 var _tables = {};
 
-function genTable(key){
+function getTable(key){
   var t = _tables[key];
-  if (!t){ 
-    t = _genTable(key);
+  if (!t){
+    t = genTable(key);
     _tables[key] = t;
   }
   return t;
@@ -72,6 +72,16 @@ function mapTable(table, buf){
     buf2[i] = table[buf1[i]];
   }
   return buf2;
+}
+
+function encode(pass, buf){
+  var t = getTable(pass);
+  return mapTable(t[0], buf);
+}
+
+function decode(pass, buf){
+  var t = getTable(pass);
+  return mapTable(t[1], buf);
 }
 
 /*
@@ -92,9 +102,6 @@ function ShadowSocks(host, port, pass) {
   this._host = host;
   this._port = port;
   this._pass = pass;
-  var tables = genTable(pass);
-  this._en_table = tables[0];
-  this._de_table = tables[1];
 }
 //inherits(ShadowSocks, net.Socket);
 //inherits(ShadowSocks, events.EventEmitter);
@@ -142,7 +149,7 @@ ShadowSocks.prototype.setEncoding = function(encoding) {
 };
 
 ShadowSocks.prototype.write = function(data, arg1, arg2) {
-  var en = mapTable(this._en_table, data);
+  var en = encode(this._pass, data);
   return this.socket.write(en, arg1, arg2);
 };
 
@@ -171,7 +178,7 @@ ShadowSocks.prototype.establish_socks_connection = function(host, port) {
 
   self.connect_socks_to_host(host, port, function() {
     self.socket.on('data', function(data) {
-      var de = mapTable(self._de_table, data);
+      var de = decode(self._pass, data);
       self.emit('data', de);
     });
 
@@ -203,9 +210,6 @@ ShadowSocks.prototype.connect_socks_to_host = function(host, port, cb) {
 
 // ---- exports
 
-var encodeAddress = socks5.encodeAddress;
-var decodeAddress = socks5.decodeAddress;
-
 exports.init = function(options){
   var host = options.host || '127.0.0.1';
   var port = options.port || 7070;
@@ -214,8 +218,11 @@ exports.init = function(options){
   return socks;
 }
 
+var encodeAddress = socks5.encodeAddress;
+var decodeAddress = socks5.decodeAddress;
+
 exports.encodeAddress = encodeAddress;
 exports.decodeAddress = decodeAddress;
 
-exports.genTable = genTable;
-exports.mapTable = mapTable;
+exports.encode = encode;
+exports.decode = decode;
