@@ -15,7 +15,7 @@
       "host": "0.0.0.0",
       "port": 80,
       "pac": {
-        "template": "gfw.pac.tmpl",
+        "template": "pac.tmpl",
         "proxy": {
           "type": "PROXY",
           "host": "127.0.0.1",
