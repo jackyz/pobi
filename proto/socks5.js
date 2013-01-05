@@ -1,4 +1,4 @@
-var debug = require('debug')('PROTO:SOCKS5')
+var debug = require('../debug')('PROTO:SOCKS5')
     , net = require('net')
     , util = require('util')
     , stream = require('stream');

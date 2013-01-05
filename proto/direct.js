@@ -1,4 +1,4 @@
-var debug = require('debug')('PROTO:DIRECT')
+var debug = require('../debug')('PROTO:DIRECT')
     , net = require('net');
 
 // ---- exports

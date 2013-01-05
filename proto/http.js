@@ -1,4 +1,4 @@
-var debug = require('debug')('PROTO:HTTP')
+var debug = require('../debug')('PROTO:HTTP')
     , net = require('net')
     , http = require('http')
     , util = require('util')

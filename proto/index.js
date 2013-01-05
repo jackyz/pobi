@@ -1,4 +1,4 @@
-var debug = require('debug')('PROTO')
+var debug = require('../debug')('PROTO')
   , util = require('util')
   , http = require('http');
 

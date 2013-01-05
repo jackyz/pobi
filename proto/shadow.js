@@ -1,4 +1,4 @@
-var debug = require('debug')('PROTO:SHADOW')
+var debug = require('../debug')('PROTO:SHADOW')
     , net = require('net')
     , util = require('util')
     , stream = require('stream')

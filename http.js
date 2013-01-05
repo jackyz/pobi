@@ -1,4 +1,4 @@
-var debug = require('debug')('HTTP')
+var debug = require('./debug')('HTTP')
     , http = require('http')
     , url = require('url')
     , net = require('net')

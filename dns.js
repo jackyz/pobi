@@ -1,4 +1,4 @@
-var debug = require('debug')('DNS')
+var debug = require('./debug')('DNS')
     , ndns = require('native-dns');
 
 var wpad_domain = 'wpad';

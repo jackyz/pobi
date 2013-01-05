@@ -1,4 +1,4 @@
-var debug = require('debug')('WPAD')
+var debug = require('./debug')('WPAD')
     , http = require('http')
     , fs = require('fs')
     , path = require('path');

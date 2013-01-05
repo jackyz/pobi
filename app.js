@@ -1,4 +1,4 @@
-var debug = require('debug')('APP')
+var debug = require('./debug')('APP')
     , config = require('./config');
 
 /*

@@ -1,4 +1,4 @@
-var debug = require('debug')('CONFIG')
+var debug = require('./debug')('CONFIG')
     , fs = require('fs')
     , path = require('path');
 

@@ -1,4 +1,4 @@
-var debug = require('debug')('SHADOW')
+var debug = require('./debug')('SHADOW')
     , url = require('url')
     , net = require('net')
     , util = require('util')
