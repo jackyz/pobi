@@ -1,9 +1,12 @@
-Pobi -- A `Kill You 3000` tool for G.F.W.
-=========================================
+Pobi -- A `One moral, towards each other to heaven` tool for G.F.W.
+===================================================================
 
 What
 ----
-Contains a set of servers runs in standard protocol. When running such a node, without install any extra software or configure *anything* (still need enable `auto-detect proxy setting` in some browser), *all* device in your local network will Fan-Qiang automatically.
+Contains a set of server to runs standard protocols. When running such a node, without *any configure* or install *any extra software*, **all device in your local network will Fan-Qiang automatically**.
+
+* You still need enable browser's built-in `auto-detect proxy` feature.
+* Andriod device still needs install extra app manually. Because it doesn't support any proxy setting at all. (surprise?) ProxyDroid/Shadowsocks/SSH Tunnel would helps. To push andriod team to kill this 4 years old bug. Please **star** and **broadcast**: http://code.google.com/p/android/issues/detail?id=1273
 
 BestPractice
 ------------
@@ -12,13 +15,7 @@ BestPractice
 * Point DNS to this ip in your router.
 * You are done. Enjoy it.
 
-__Someone can write a tutourial or make a vm-image, please help.__
-
-Note
-----
-* In some browser, you still need enable `auto-detect proxy setting`.
-* Andriod device still needs install extra app manually. Because it doesn't support any proxy setting at all. (surprise?) ProxyDroid/Shadowsocks/SSH Tunnel would helps.
-* To push andriod team to kill this 4 years old bug. Please **star** and **broadcast** it: http://code.google.com/p/android/issues/detail?id=1273
+_Someone can write a tutourial or make a vm-image, please help._
 
 Specs
 -----
@@ -133,12 +130,12 @@ npm -g start pobi --remote shadow://pass@1.1.1.1:1234`
 * In Safari: `Preference` - `Advanced` - `Proxies` - `Auto Proxy Discovery`
 * In Firefox: `Preference` - `Advanced` - `Network` - `Settings` - `Auto-detect proxy setting for this network`
 
-__I need volunteer to complete this list.__
+_I need volunteer to complete this list._
 
 Q & A
 -----
 
-Why http proxy?
+Why old http proxy protocol?
 
 * It's the only proxy protocol works on every device/browser, even for ie6 and opera. and the http proxy is delegate to socks5 proxy, the overhead is very small.
 
