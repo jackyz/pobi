@@ -1,11 +1,11 @@
-##A 'One moral, towards each other to heaven' tool for G.F.W.##
+#A 'One moral, towards each other to heaven' tool for G.F.W.##
 
 What
 ----
-Running such a node, without *any configure* or install *any other software*, **all device in your local network will Fan-Qiang automatically**.
+Running such a node, without *any configure* or install *any other software*, **enable all devices in your local network Fan-Qiang automatically**.
 
 * You still need enable browser's built-in `auto-detect proxy` feature, at least once.
-* Andriod device still needs install extra app manually. Because it doesn't support any proxy setting at all. (surprise?) Apps like ProxyDroid / Shadowsocks / SSH Tunnel would helps. To push andriod team to kill this 4 years old bug. Please **star** and **broadcast**: http://code.google.com/p/android/issues/detail?id=1273
+* Andriod device still need install extra app manually. Because it doesn't built-in any proxy setting at all. (surprise?) Apps like ProxyDroid / Shadowsocks / SSH Tunnel would helps. To push andriod team to kill this 4 years old bug. Please **star** and **broadcast**: http://code.google.com/p/android/issues/detail?id=1273
 
 Best Practice
 -------------
@@ -18,7 +18,7 @@ _Someone can write a tutourial or make a vm-image, please help._
 
 How
 ---
-Basically it's a full-stack DIY local server solution.
+It starts a set of servers locally. Those servers take overs all the complexity of Fan-Qiang. The `hosts`, the `pac`, the `front proxy` etc. So, the only thing you need is an usable remote worker.
 * A DNS server to deal with DNS poison.
 * A WPAD server to dispatch auto-config proxy rules.
 * DNS and WPAD uses a same modified version of GFWList2PAC, only proxy when nessary.
@@ -66,7 +66,7 @@ Go http://nodejs.org/download/ download and install the latest version.
 ```
 npm install -g https://github.com/jackyz/pobi/tarball/master
 ```
-_I'm not sure if it's the right place._
+_I'm not sure if it's the right place, any suggestion?_
 
 ###Run for test
 
@@ -121,15 +121,17 @@ We will remove the DEBUG flag in production mode, and obviously, you need a serv
 npm -g start pobi --app worker --shadow shadow://pass@1.1.1.1:1234
 ```
 
-  * on your local machine (linux/macosx)
+  * on your local machine 
+
+    * linux/macosx
 
 ```bash
 # start the LOCAL on your local machine, and point to the WORKER
 # LOCAL needs port 80 and 53, so need sudos
-udo npm -g start pobi --remote shadow://pass@1.1.1.1:1234
+sudo npm -g start pobi --remote shadow://pass@1.1.1.1:1234
 ```
 
-  * on your local machine (windows)
+    * windows
 
 ```bash
 # start the LOCAL on your local machine, and point to the WORKER
@@ -142,6 +144,12 @@ npm -g start pobi --remote shadow://pass@1.1.1.1:1234`
 * In Safari: `Preference` - `Advanced` - `Proxies` - `Auto Proxy Discovery`
 * In Firefox: `Preference` - `Advanced` - `Network` - `Settings` - `Auto-detect proxy setting for this network`
 _I need volunteer to complete this list._
+
+###Upgrade
+
+```
+npm update -g
+```
 
 Q & A
 -----
