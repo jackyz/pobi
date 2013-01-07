@@ -1,5 +1,4 @@
-Pobi -- A `One moral, towards each other to heaven` tool for G.F.W.
-===================================================================
+###A `One moral, towards each other to heaven` tool for G.F.W.###
 
 What
 ----
