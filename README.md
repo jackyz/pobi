@@ -10,19 +10,20 @@ Running such a node, without *any configure* or install *any other software*, **
 Best Practice
 -------------
 * Setup a virtual machine (in bridge network mode, use static DHCP in router).
-* Install and run it (make it auto-start is a good idea).
-* Point DNS to this ip in your router.
-* You are done. Enjoy it.
+* Install and run it (auto-start is a good idea).
+* Point DNS to this ip in router.
+* You are done. Enjoy.
+
 _Someone can write a tutourial or make a vm-image, please help._
 
 How
 ---
-Basically it's a full stack DIY local server solution.
+Basically it's a full-stack DIY local server solution.
 * A DNS server to deal with DNS poison.
 * A WPAD server to dispatch auto-config proxy rules.
-* DNS and WPAD uses a same modified version of GFWList2PAC, only proxy nessary request.
+* DNS and WPAD uses a same modified version of GFWList2PAC, only proxy when nessary.
 * A HTTP PROXY server for browsers (IE/Opera) and forward requests to SOCKS5 PROXY server.
-* A SOCKS5 PROXY server for other tools (curl/skype/...) and encode data then forward request to remote server.
+* A SOCKS5 PROXY server for other tools (curl/skype/...) and encode data then forward request to remote WORKER.
 * Obviously, each part could replaceable and upgradable.
 
 Diagram
@@ -50,7 +51,7 @@ Diagram
 
 What Not
 --------
-* Not a sevice, just a tool. you still needs outside server.
+* Not a sevice, just a tool. You still need your own outside server.
 * Nothing magic, just a set of standard protocol services.
 
 Install - Test - Run
@@ -142,12 +143,22 @@ npm -g start pobi --remote shadow://pass@1.1.1.1:1234`
 * In Firefox: `Preference` - `Advanced` - `Network` - `Settings` - `Auto-detect proxy setting for this network`
 _I need volunteer to complete this list._
 
+TODO
+----
+
+* Support multiple WORKERS.
+* Rotate between WORKERS.
+* Update config and auto-restart.
+* Support more encode algorithm.
+* A new just-normal encode.
+
 Q & A
 -----
 
 Why old http proxy protocol?
 
 * It's the only proxy protocol works on every browser, even for old ie5.5 and opera. And the http proxy is delegate to socks5 proxy, the overhead is small. You could test by your own.
+
 ```
 time for i in `seq 1 10`; do curl -x http://192.168.1.100:8080 http://qq.com > /dev/null; done
 time for i in `seq 1 10`; do curl -x socks5://192.168.1.100:7070 http://qq.com > /dev/null; done
