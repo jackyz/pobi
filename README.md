@@ -2,7 +2,7 @@
 
 What
 ----
-Contains a set of server to runs standard protocols. When running such a node, without *any configure* or install *any extra software*, **all device in your local network will Fan-Qiang automatically**.
+Running such a node, without *any configure* or install *any other software*, **all device in your local network will Fan-Qiang automatically**.
 
 * You still need enable browser's built-in `auto-detect proxy` feature, at least once.
 * Andriod device still needs install extra app manually. Because it doesn't support any proxy setting at all. (surprise?) Apps like ProxyDroid / Shadowsocks / SSH Tunnel would helps. To push andriod team to kill this 4 years old bug. Please **star** and **broadcast**: http://code.google.com/p/android/issues/detail?id=1273
@@ -13,53 +13,61 @@ Best Practice
 * Install and run it (make it auto-start is a good idea).
 * Point DNS to this ip in your router.
 * You are done. Enjoy it.
-
 _Someone can write a tutourial or make a vm-image, please help._
 
-The Diagram
------------
+How
+---
+Basically it's a full stack DIY local server solution.
+* A DNS server to deal with DNS poison.
+* A WPAD server to dispatch auto-config proxy rules.
+* DNS and WPAD uses a same modified version of GFWList2PAC, only proxy nessary request.
+* A HTTP PROXY server for browsers (IE/Opera) and forward requests to SOCKS5 PROXY server.
+* A SOCKS5 PROXY server for other tools (curl/skype/...) and encode data then forward request to remote server.
+* Obviously, each part could replaceable and upgradable.
 
+Diagram
+-------
 ```
                  +---------------LOCAL----------------+         +--WORKER--+
                  |                                    |         |          |
 +-------+        | +---+  +----+  +-----+    +------+ |  +---+  | +------+ |
 |Browser| --DNS--> |DNS|  |WPAD|  |HTTP |    |SOCKS5| |  |GFW|  | |SERVER| |
 |       | <------- |   |  |    |  |PROXY|    |PROXY | |  |   |  | |      | |
-|CHROME |        | +---+  |    |  |     |    |      | |  |   |  | |      | |
-|SAFARI | --WPAD PAC----> |    |  |     |    |      | |  |   |  | |      | |
-|FIREFOX| <-------------- |    |  |     |    |      | |  |   |  | |      | |
-|OPERA  |        |        +----+  |     |    |      | |  |   |  | |      | |
-|IE     | --HTTP PROXY----------> |     | -> |      | --ENCODED-> |      | |
+|chrome |        | +---+  |    |  |     |    |      | |  |   |  | |      | |
+|safari | --WPAD PAC----> |    |  |     |    |      | |  |   |  | |      | |
+|firefox| <-------------- |    |  |     |    |      | |  |   |  | |      | |
+|opera  |        |        +----+  |     |    |      | |  |   |  | |      | |
+|ie     | --HTTP PROXY----------> |     | -> |      | --ENCODED-> |      | |
 |...    | <---------------------- |     | <- |      | <-ENCODED-- |      | |
 +-------+        |                +-----+    |      | |  |   |  | |      | |
                  |                           |      | |  |   |  | |      | |
 +-------+        |                           |      | |  |   |  | |      | |
 |Tools  | --SOCKS5 PROXY-------------------> |      | --ENCODED-> |      | |
-|CURL   | <--------------------------------> |      | <-ENCODED-- |      | |
+|curl   | <--------------------------------> |      | <-ENCODED-- |      | |
 +-------+        |                           +------+ |  +---+  | +------+ |
                  +------------------------------------+         +----------+
 ```
 
-Specs
------
-* Protocol: http, socks5, shadow (for now).
-* Browser: *any browser* ie, safari, chrome, firefox, iOS, kindle.
-* Platform: macosx windows linux (just the toolchain itself, because it is running standard protocols, so you can use it in any properly platform)
+What Not
+--------
+* Not a sevice, just a tool. you still needs outside server.
+* Nothing magic, just a set of standard protocol services.
 
 Install - Test - Run
 --------------------
 
-**Install node**
+###Install node
 
 Go http://nodejs.org/download/ download and install the latest version.
 
-**Install pobi**
+###Install pobi
 
 ```
 npm install -g https://github.com/jackyz/pobi/tarball/master
 ```
+_I'm not sure if it's the right place._
 
-**Run for test**
+###Run for test
 
 We will run the LOCAL and WORKER with DEBUG flag for testing. All runs on your local machine. So you cannot cross the wall by this configure.
 
@@ -67,9 +75,10 @@ We will run the LOCAL and WORKER with DEBUG flag for testing. All runs on your l
 
 ```bash
 # start the LOCAL in a console.
+# LOCAL needs port 80 and 53, so need sudo
 sudo DEBUG=* npm -g start pobi
 # start the WORKER in a new console.
-sudo DEBUG=* npm -g start pobi --app worker
+DEBUG=* npm -g start pobi --app worker
 ```
 
   * windows
@@ -81,7 +90,7 @@ set DEBUG=* && npm -g start pobi
 set DEBUG=* && npm -g start pobi --app worker
 ```
 
-**Test**
+###Test
 
 ```bash
 # assuming your ip is 192.168.1.100
@@ -100,7 +109,7 @@ curl -x http://192.168.1.100:8080 https://github.com
 curl -x socks5://192.168.1.100:7070 http://qq.com
 ```
 
-**Run for real**
+###Run for real
 
 We will remove the DEBUG flag in production mode, and obviously, you need a server runs outside. Assuming this server's ip is 1.1.1.1 and running on port 1234, change it to fit your own setting.
 
@@ -115,7 +124,8 @@ npm -g start pobi --app worker --shadow shadow://pass@1.1.1.1:1234
 
 ```bash
 # start the LOCAL on your local machine, and point to the WORKER
-sudo npm -g start pobi --remote shadow://pass@1.1.1.1:1234
+# LOCAL needs port 80 and 53, so need sudos
+udo npm -g start pobi --remote shadow://pass@1.1.1.1:1234
 ```
 
   * on your local machine (windows)
@@ -125,12 +135,11 @@ sudo npm -g start pobi --remote shadow://pass@1.1.1.1:1234
 npm -g start pobi --remote shadow://pass@1.1.1.1:1234`
 ```
 
-**Enable Browser's `Auto-detect proxy setting`**
+### Enable `Auto-detect proxy`
 
 * In IE: `Tool` - `Internet Options` - `Connection` - `Lan` - `Use AutoConfig` - Address:`http://wpad/wpad.dat`
 * In Safari: `Preference` - `Advanced` - `Proxies` - `Auto Proxy Discovery`
 * In Firefox: `Preference` - `Advanced` - `Network` - `Settings` - `Auto-detect proxy setting for this network`
-
 _I need volunteer to complete this list._
 
 Q & A
@@ -138,20 +147,20 @@ Q & A
 
 Why old http proxy protocol?
 
-* It's the only proxy protocol works on every device/browser, even for ie6 and opera. and the http proxy is delegate to socks5 proxy, the overhead is very small.
+* It's the only proxy protocol works on every browser, even for old ie5.5 and opera. And the http proxy is delegate to socks5 proxy, the overhead is small. You could test by your own.
+```
+time for i in `seq 1 10`; do curl -x http://192.168.1.100:8080 http://qq.com > /dev/null; done
+time for i in `seq 1 10`; do curl -x socks5://192.168.1.100:7070 http://qq.com > /dev/null; done
+```
 
-Where is the socks5 proxy?
+What if I found a bug?
 
-* It's runs on 7070 port.
-
-How can I disable the logs?
-
-* As above, It's can enable or disable by `DEBUG=*` envirment var.
+* Submit an issues here.
 
 Thanks
 ------
 
-* Of course, __The Party__, __The Country__ and __The G.F.W. itself__ first ;)
+* Of course, __The Party__, __The Country__ and __The G.F.W.__ must be first ;)
 * XiXiang project: http://code.google.com/p/scholarzhang
 * AutoProxyGFWList: http://code.google.com/p/autoproxy-gfwlist
 * AutoProxy2Pac: http://autoproxy2pac.appspot.com
