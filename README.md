@@ -1,8 +1,8 @@
-#A 'One moral, towards each other to heaven' tool for G.F.W.##
+#A 'Kill You 3000' tool for G.F.W.
 
 What
 ----
-Running such a node, without *any configure* or install *any other software*, **enable all devices in your local network Fan-Qiang automatically**.
+Running such a node, without *any configure* or install *any other software*, **enables all devices in your local network Fan-Qiang automatically**.
 
 * You still need enable browser's built-in `auto-detect proxy` feature, at least once.
 * Andriod device still need install extra app manually. Because it doesn't built-in any proxy setting at all. (surprise?) Apps like ProxyDroid / Shadowsocks / SSH Tunnel would helps. To push andriod team to kill this 4 years old bug. Please **star** and **broadcast**: http://code.google.com/p/android/issues/detail?id=1273
@@ -14,7 +14,7 @@ Best Practice
 * Point DNS to this ip in router.
 * You are done. Enjoy.
 
-_Someone can write a tutourial or make a vm-image, please help._
+_Can someone helps to write a tutourial or make a vm-image?_
 
 How
 ---
