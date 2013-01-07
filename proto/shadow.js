@@ -1,9 +1,27 @@
 var debug = require('../debug')('PROTO:SHADOW')
-    , net = require('net')
-    , util = require('util')
-    , stream = require('stream')
-    , crypto = require('crypto')
-    , socks5 = require('./socks5');
+  , net = require('net')
+  , url = require('url')
+  , util = require('util')
+  , stream = require('stream')
+  , crypto = require('crypto')
+  , socks5 = require('./socks5');
+
+// ---- exports
+
+exports.init = function(options){
+  var o = url.parse(options);
+  var host = o.hostname || '127.0.0.1';
+  var port = o.port || 7070;
+  var pass = o.auth || 'cool';
+  var socks = new ShadowSocks(host, port, pass);
+  return socks;
+}
+
+exports.encodeAddress = socks5.encodeAddress;
+exports.decodeAddress = socks5.decodeAddress;
+
+exports.encode = encode;
+exports.decode = decode;
 
 // ---- shadow encode decode
 
@@ -203,26 +221,7 @@ ShadowSocks.prototype.establish_socks_connection = function(host, port) {
 };
 
 ShadowSocks.prototype.connect_socks_to_host = function(host, port, cb) {
-  var buffer = encodeAddress({host:host, port:port});
+  var buffer = exports.encodeAddress({host:host, port:port});
   this.write(buffer);
   if(cb) cb();
 }
-
-// ---- exports
-
-exports.init = function(options){
-  var host = options.host || '127.0.0.1';
-  var port = options.port || 7070;
-  var pass = options.pass || 'cool';
-  var socks = new ShadowSocks(host, port, pass);
-  return socks;
-}
-
-var encodeAddress = socks5.encodeAddress;
-var decodeAddress = socks5.decodeAddress;
-
-exports.encodeAddress = encodeAddress;
-exports.decodeAddress = decodeAddress;
-
-exports.encode = encode;
-exports.decode = decode;

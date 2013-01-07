@@ -1,5 +1,7 @@
 var debug = require('./debug')('DNS')
-    , ndns = require('native-dns');
+  , url = require('url')
+  , isGfw = require('./gfw').isGfw
+  , ndns = require('native-dns');
 
 var wpad_domain = 'wpad';
 var timeout = 2000;
@@ -24,14 +26,6 @@ function query(q, cb){
     cb(null, result);
   });
   ureq.send();
-}
-
-function isGfw(domain){
-  var self = this;
-  for (var i=0; i<self.gfw.length; i++){
-    if (endsWith(domain, self.gfw[i])) return true;
-  }
-  return false;
 }
 
 function queryGfw(domain, cb){
@@ -61,21 +55,16 @@ function startsWith(str, prefix){
   return prefix == str.substr(0,prefix.length);
 }
 
-function endsWith(str, postfix){
-  if (str.length < postfix.length) return false;
-  return postfix == str.substr(str.length - postfix.length, postfix.length);
-}
-
 function start(config){
   // init
+  var host = config.host || '0.0.0.0';
   var port = config.port || 53; // dns must on 53
-  var host = config.host || '127.0.0.1';
+  var o = url.parse(config.upstream);
   var upstream = {
-    address: config.upstream.host || '8.8.8.8',
-    port: config.upstream.port || 53,
-    type: config.upstream.protocol || 'udp'
+    type: (o.protocol == "tcp:") ? 'tcp' : 'udp',
+    address: o.hostname || '8.8.8.8',
+    port: o.port || 53
   };
-  var gfw = config.gfw || ['twitter.com','facebook.com'];
   var wpad = config.wpad || '127.0.0.1';
   //
   var onListening = function(){
@@ -91,7 +80,7 @@ function start(config){
       res.answer.push(ndns.A({name:wpad_domain, address:self.wpad, ttl:600}));
       res.send();
       debug("%s: Query [WPAD] %j -> %j", req.ip, d, [self.wpad]);
-    } else if(q['type'] == 1 && q['class'] == 1 && isGfw.call(this, d)) {
+    } else if(q['type'] == 1 && q['class'] == 1 && isGfw(d)) {
       queryGfw.call(this, d, function(e,r){
         if(e) {
           debug("%s: Query [GFW] %j : %j", req.ip, d, e);
@@ -126,7 +115,6 @@ function start(config){
 
   var udpServer = ndns.createServer();
   udpServer.upstream = upstream;
-  udpServer.gfw = gfw;
   udpServer.wpad = wpad;
   udpServer.on('listening', onListening);
   udpServer.on('request', onRequest);
@@ -135,7 +123,6 @@ function start(config){
   udpServer.serve(port, host);
   var tcpServer = ndns.createTCPServer();
   tcpServer.upstream = upstream;
-  tcpServer.gfw = gfw;
   tcpServer.wpad = wpad;
   tcpServer.on('listening', onListening);
   tcpServer.on('request', onRequest);

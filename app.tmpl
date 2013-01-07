@@ -1,0 +1,38 @@
+{
+  "local": {
+    "gfw": {
+      "pac": {
+        "template": "gfw.tmpl",
+        "proxy": "PROXY <%=ip%>:8080"
+      }
+    },
+    "dns": {
+      "host": "0.0.0.0",
+      "port": 53,
+      "upstream": "udp://8.8.8.8:53",
+      "wpad": "<%=ip%>"
+    },
+    "wpad": {
+      "host": "0.0.0.0",
+      "port": 80
+    },
+    "http": {
+      "host": "0.0.0.0",
+      "port": 8080,
+      "upstream": "socks5://<%=ip%>:7070"
+    },
+    "socks5": {
+      "host": "0.0.0.0",
+      "port": 7070,
+      "upstream": "<%=remote%>"
+    }
+  },
+  "worker": {
+    "shadow": {
+      "host": "0.0.0.0",
+      "port": 1027,
+      "pass": "cool",
+      "upstream": "direct://"
+    }
+  }
+}

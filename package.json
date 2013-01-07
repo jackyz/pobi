@@ -1,10 +1,10 @@
 {
     "name": "pobi",
     "version": "0.0.1",
-    "description": "A 'Kill You 3000' package for G.F.W.",
-    "author": "pobiren <pobiren@gmail.com>",
+    "description": "A `Kill You 3000` package for G.F.W.",
+    "author": "jackyz <jackyz.zhao@gmail.com>",
     "dependencies": {
-        "native-dns": "https://github.com/pobiren/node-dns/tarball/master"
+        "native-dns": "https://github.com/jackyz/node-dns/tarball/master"
     },
     "devDependencies": {
     },
@@ -12,9 +12,9 @@
     "bin": {
     },
     "scripts": {
-        "start": "node app.js local"
+        "start": "node app.js"
     },
     "engines": {
-        "node": ">=0.8.16"
+        "node": ">=0.8.4"
     }
 }

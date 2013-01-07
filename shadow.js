@@ -50,7 +50,7 @@ function serve(sock){
     // debug('address:%j', address);
     if(address.length < d.length) buff.push(d.slice(address.length));
     // debug("connect %s:%s", address.host, address.port)
-    usock = self.proto.createConnection(address.port, address.host);
+    usock = self.upstream.createConnection(address.port, address.host);
     usock.setTimeout(connectTimeout, timeout);
     usock.on('error', error);
     usock.on('end', close);
@@ -96,7 +96,7 @@ function start(config){
   var host = config.host || '0.0.0.0';
   //
   var onListening = function(){
-    debug("listening on %j via %j", this.address(), this.proto.config);
+    debug("listening on %j via %j", this.address(), this.upstream.config);
   };
   var onConnection = function(sock){
     // debug("%s connect", sock.remoteAddress);
@@ -115,7 +115,7 @@ function start(config){
   });
   d.run(function(){
     var server = net.createServer();
-    server.proto = proto(config.proto);
+    server.upstream = proto(config.upstream);
     server.pass = config.pass || 'cool';
     server.on('listening', onListening);
     server.on('connection', onConnection);

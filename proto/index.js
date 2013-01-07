@@ -1,4 +1,5 @@
 var debug = require('../debug')('PROTO')
+  , url = require('url')
   , util = require('util')
   , http = require('http');
 
@@ -7,8 +8,8 @@ var debug = require('../debug')('PROTO')
 var upstreams = {};
 
 module.exports = function(config){
-  var protocol = config.type || 'direct';
-  var u = upstreams[JSON.stringify(config)];
+  var protocol = config.split(':')[0] || 'direct';
+  var u = upstreams[config];
   if (u === undefined) {
     // debug('init upstream %j', config);
     // ---- createConnection
