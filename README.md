@@ -143,15 +143,6 @@ npm -g start pobi --remote shadow://pass@1.1.1.1:1234`
 * In Firefox: `Preference` - `Advanced` - `Network` - `Settings` - `Auto-detect proxy setting for this network`
 _I need volunteer to complete this list._
 
-TODO
-----
-
-* Support multiple WORKERS.
-* Rotate between WORKERS.
-* Update config and auto-restart.
-* Support more encode algorithm.
-* A new just-normal encode.
-
 Q & A
 -----
 
