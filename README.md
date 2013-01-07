@@ -4,23 +4,17 @@ What
 ----
 Contains a set of server to runs standard protocols. When running such a node, without *any configure* or install *any extra software*, **all device in your local network will Fan-Qiang automatically**.
 
-* You still need enable browser's built-in `auto-detect proxy` feature.
-* Andriod device still needs install extra app manually. Because it doesn't support any proxy setting at all. (surprise?) ProxyDroid/Shadowsocks/SSH Tunnel would helps. To push andriod team to kill this 4 years old bug. Please **star** and **broadcast**: http://code.google.com/p/android/issues/detail?id=1273
+* You still need enable browser's built-in `auto-detect proxy` feature, at least once.
+* Andriod device still needs install extra app manually. Because it doesn't support any proxy setting at all. (surprise?) Apps like ProxyDroid / Shadowsocks / SSH Tunnel would helps. To push andriod team to kill this 4 years old bug. Please **star** and **broadcast**: http://code.google.com/p/android/issues/detail?id=1273
 
-BestPractice
-------------
+Best Practice
+-------------
 * Setup a virtual machine (in bridge network mode, use static DHCP in router).
 * Install and run it (make it auto-start is a good idea).
 * Point DNS to this ip in your router.
 * You are done. Enjoy it.
 
 _Someone can write a tutourial or make a vm-image, please help._
-
-Specs
------
-* Protocol: http, socks5, shadow (for now).
-* Browser: *any browser* ie, safari, chrome, firefox, iOS, kindle.
-* Platform: macosx windows linux (just the toolchain itself, because it is running standard protocols, so you can use it in any properly platform)
 
 The Diagram
 -----------
@@ -46,14 +40,20 @@ The Diagram
                  +------------------------------------+         +----------+
 ```
 
+Specs
+-----
+* Protocol: http, socks5, shadow (for now).
+* Browser: *any browser* ie, safari, chrome, firefox, iOS, kindle.
+* Platform: macosx windows linux (just the toolchain itself, because it is running standard protocols, so you can use it in any properly platform)
+
 Install - Test - Run
 --------------------
 
-**Download and install node**
+**Install node**
 
-go: http://nodejs.org/download/ download and install the latest version.
+Go http://nodejs.org/download/ download and install the latest version.
 
-**Install the tool**
+**Install pobi**
 
 ```
 npm install -g https://github.com/jackyz/pobi/tarball/master
@@ -87,12 +87,14 @@ set DEBUG=* && npm -g start pobi --app worker
 # assuming your ip is 192.168.1.100
 # test if DNS is working
 dig wpad @192.168.1.100
+# test if DNS clear is working
+dig twitter.com @192.168.1.100
 # set DNS to 192.168.1.100 in your router, or in your network setting
 # test if WPAD is working
 curl http://wpad/wpad.dat
 # test if HTTP PROXY is working
 curl -x http://192.168.1.100:8080 http://qq.com
-# test if HTTP PROXY TUNNEL is working
+# test if HTTP PROXY tunnel is working
 curl -x http://192.168.1.100:8080 https://github.com
 # test if SOCKS5 PROXY is working
 curl -x socks5://192.168.1.100:7070 http://qq.com
