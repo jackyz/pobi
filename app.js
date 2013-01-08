@@ -1,7 +1,7 @@
-var debug = require('./debug')('APP')
+var fs = require('fs')
+  , path = require('path')
   , net = require('net')
-  , fs = require('fs')
-  , path = require('path');
+  , debug = require('./debug')('APP')
 
 // ----
 
@@ -16,12 +16,10 @@ function getLocalIP(callback) {
   });
 }
 
-function getConfig(localip, remote, callback) {
+function getConfig(ctx, callback) {
   try {
-    var i = localip || '127.0.0.1';
-    var r = remote || 'shadow://cool@'+i+':1027';
     var t = fs.readFileSync(path.dirname(__filename)+"/app.tmpl", 'utf8');
-    var s = tmpl(t, {ip:i,remote:r});
+    var s = tmpl(t, ctx);
     var j = JSON.parse(s);
     callback(undefined, j);
   } catch(x) {
@@ -133,19 +131,31 @@ process.on('uncaughtException', function(e){
 */
 
 // command
-// ** first run will build gfw chn-iptable
-// ** if need rebuild, just drop gfw.rule file
-// ** on local
-// node app local shadow://pass@1.2.3.4:5678
-// ** on remote (ip: 1.2.3.4)
-// node app worker
+// ** on local as a LOCAL (worker ip: 1.2.3.4)
+
+// npm -g start --app=local --local_worker=shadow://pass@1.2.3.4:5678
+// npm -g start --app=local --local_worker=socks5://1.2.3.4:5678
+
+// ** on remote as a WORKER (self ip: 1.2.3.4)
+
+// npm -g start --app=worker --worker_shadow=shadow://pass@1.2.3.4:5678 --worker_socks5=socks5://1.2.3.4:5678
 
 if (!module.parent) {
-  var app = process.argv[2];
-  var remote = process.argv[3];
   getLocalIP(function (error, localip) {
     if (error) return console.log('Not Online? error:', error);
-    getConfig(localip, remote, function(error, conf){
+    var app = process.env.npm_config_app || 'local';
+    var ip = localip || '127.0.0.1';
+    var ctx = {
+      local: {
+	ip: ip,
+	worker: process.env.npm_config_worker || 'shadow://cool@'+ip+':1027'
+      },
+      worker: {
+	socks5: process.env.npm_config_socks5 || 'socks5://cool@'+ip+':1026',
+	shadow: process.env.npm_config_shadow || 'shadow://cool@'+ip+':1027'
+      }
+    };
+    getConfig(ctx, function(error, conf){
       if (error) return console.log('Config fail. error:', error);
       debug('starting %s on %s', app, localip);
       // the config parser
@@ -163,12 +173,14 @@ if (!module.parent) {
 	}
 	return val;
       }
+
       // start them one by one
+
       var cfg = config(app);
       for(var mod in cfg){
 	var conf = cfg[mod];
-	// debug("start %s:%s %j", app, mod, conf);
-	require('./'+mod).start(conf);
+	debug("start %s:%s %j", app, mod, conf);
+	// require('./'+mod).start(conf);
       }
     });
   });

@@ -1,10 +1,9 @@
-var debug = require('./debug')('SHADOW')
-    , url = require('url')
-    , net = require('net')
-    , util = require('util')
-    , d = require('domain').create()
-    , proto = require('./proto')
-    , shadow = require('./proto/shadow');
+var url = require('url')
+  , net = require('net')
+  , d = require('domain').create()
+  , debug = require('./debug')('SHADOW')
+  , proto = require('./proto')
+  , shadow = require('./proto/shadow');
 
 // ---- timeout
 
@@ -90,11 +89,9 @@ function serve(sock){
 
 // ----
 
+var server = null;
+
 function start(config){
-  // init
-  var port = config.port || 1070;
-  var host = config.host || '0.0.0.0';
-  //
   var onListening = function(){
     debug("listening on %j via %j", this.address(), this.upstream.config);
   };
@@ -109,26 +106,32 @@ function start(config){
     debug("error %j", err);
   };
 
+  // init
+  server = net.createServer();
+  server.on('listening', onListening);
+  server.on('connection', onConnection);
+  server.on('close', onClose);
+  server.on('error', onError);
+
+  server.upstream = proto(config.upstream);
+  server.pass = config.pass || 'cool';
+
+  var o = url.parse(config.url);
+  var host = o.hostname || '0.0.0.0';
+  var port = o.port || 1070;
+  //
+
   d.on('error', function(e){
     // debug('ERROR', e, e.stack);
     debug('!!!! ERROR %s', e.message);
   });
   d.run(function(){
-    var server = net.createServer();
-    server.upstream = proto(config.upstream);
-    server.pass = config.pass || 'cool';
-    server.on('listening', onListening);
-    server.on('connection', onConnection);
-    server.on('close', onClose);
-    server.on('error', onError);
     server.listen(port, host);
   });
 }
 exports.start = start;
 
-// ----
-/*
-if(!module.parent) {
-  start({port:7070});
+function stop(){
+  server.close();
 }
-*/
+exports.stop = stop;

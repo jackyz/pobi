@@ -79,7 +79,7 @@ We will run the LOCAL and WORKER with DEBUG flag for testing. All runs on your l
 # LOCAL needs port 80 and 53, so need sudo
 sudo DEBUG=* npm -g start pobi
 # start the WORKER in a new console.
-DEBUG=* npm -g start pobi --app worker
+DEBUG=* npm -g start pobi --app=worker
 ```
 
   * windows
@@ -88,18 +88,20 @@ DEBUG=* npm -g start pobi --app worker
 # start the LOCAL in a console.
 set DEBUG=* && npm -g start pobi
 # start the WORKER in a new console.
-set DEBUG=* && npm -g start pobi --app worker
+set DEBUG=* && npm -g start pobi --app=worker
 ```
 
 ###Test
 
 ```bash
 # assuming your ip is 192.168.1.100
-# test if DNS is working
+# test if DNS is working (linux/macosx)
 dig wpad @192.168.1.100
-# test if DNS clear is working
+# test if DNS is working (windows)
+nslookup wpad 192.168.1.100
+# test if DNS clean is working
 dig twitter.com @192.168.1.100
-# set DNS to 192.168.1.100 in your router, or in your network setting
+# set DNS to 192.168.1.100 in your router, or network setting
 # test if WPAD is working
 curl http://wpad/wpad.dat
 # test if HTTP PROXY is working
@@ -118,7 +120,7 @@ We will remove the DEBUG flag in production mode, and obviously, you need a serv
 
 ```bash
 # start the WORKER on your remote server.
-npm -g start pobi --app worker --shadow shadow://pass@1.1.1.1:1234
+npm -g start pobi --app=worker --shadow==shadow://pass@1.1.1.1:1234
 ```
 
   * on your local machine 
@@ -128,14 +130,14 @@ npm -g start pobi --app worker --shadow shadow://pass@1.1.1.1:1234
 ```bash
 # start the LOCAL on your local machine, and point to the WORKER
 # LOCAL needs port 80 and 53, so need sudos
-sudo npm -g start pobi --remote shadow://pass@1.1.1.1:1234
+sudo npm -g start pobi --worker=shadow://pass@1.1.1.1:1234
 ```
 
     * windows
 
 ```bash
 # start the LOCAL on your local machine, and point to the WORKER
-npm -g start pobi --remote shadow://pass@1.1.1.1:1234`
+npm -g start pobi --worker=shadow://pass@1.1.1.1:1234`
 ```
 
 ### Enable `Auto-detect proxy`

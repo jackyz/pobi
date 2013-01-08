@@ -1,16 +1,8 @@
-var debug = require('./debug')('GFW')
-  , app = require('./app')
+var fs = require('fs')
+  , path = require('path')
   , vm = require('vm')
-  , fs = require('fs')
-  , path = require('path');
-
-// ---- exports
-
-exports.start = start;
-exports.stop = stop;
-
-exports.isGfw = isGfw;
-exports.getPac = getPac;
+  , app = require('./app')
+  , debug = require('./debug')('GFW');
 
 // ---- implements
 
@@ -20,6 +12,8 @@ var ctx = null;
 var keys = [];
 var cache = {};
 
+// ----
+
 function start(config){
   var proxy = config.pac.proxy || "DIRECT";
   pac = app.tmpl(fs.readFileSync(path.dirname(__filename)+'/'+config.pac.template, 'utf8'), {proxy:proxy});
@@ -27,6 +21,7 @@ function start(config){
   vm.runInContext(pac, ctx, 'wpad.dat');
   debug("started");
 }
+exports.start = start;
 
 function stop(){
   pac = null;
@@ -35,6 +30,7 @@ function stop(){
   cache = {};
   debug("stoped");
 }
+exports.stop = stop;
 
 function isGfw(d){
   if (pac == null) throw "NOT_INIT_YET";
@@ -45,13 +41,10 @@ function isGfw(d){
   cache[d] = r;
   return r;
 }
+exports.isGfw = isGfw;
 
 function getPac(){
   if (pac == null) throw "NOT_INIT_YET";
   return pac;
 }
-
-function endsWith(str, postfix){
-  if (str.length < postfix.length) return false;
-  return postfix == str.substr(str.length - postfix.length, postfix.length);
-}
+exports.getPac = getPac;

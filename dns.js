@@ -1,5 +1,6 @@
-var debug = require('./debug')('DNS')
-  , url = require('url')
+var url = require('url')
+  , d = require('domain').create()
+  , debug = require('./debug')('DNS')
   , isGfw = require('./gfw').isGfw
   , ndns = require('native-dns');
 
@@ -55,18 +56,12 @@ function startsWith(str, prefix){
   return prefix == str.substr(0,prefix.length);
 }
 
+// ----
+
+var udpServer = null;
+var tcpServer = null;
+
 function start(config){
-  // init
-  var host = config.host || '0.0.0.0';
-  var port = config.port || 53; // dns must on 53
-  var o = url.parse(config.upstream);
-  var upstream = {
-    type: (o.protocol == "tcp:") ? 'tcp' : 'udp',
-    address: o.hostname || '8.8.8.8',
-    port: o.port || 53
-  };
-  var wpad = config.wpad || '127.0.0.1';
-  //
   var onListening = function(){
     debug("listening on %j", this.address());
   };
@@ -113,29 +108,50 @@ function start(config){
     debug("error", err, buff, req, res);
   }
 
-  var udpServer = ndns.createServer();
-  udpServer.upstream = upstream;
-  udpServer.wpad = wpad;
+  // init
+  udpServer = ndns.createServer();
   udpServer.on('listening', onListening);
   udpServer.on('request', onRequest);
   udpServer.on('close', onClose);
   udpServer.on('error', onError);
-  udpServer.serve(port, host);
-  var tcpServer = ndns.createTCPServer();
-  tcpServer.upstream = upstream;
-  tcpServer.wpad = wpad;
+
+  tcpServer = ndns.createTCPServer();
   tcpServer.on('listening', onListening);
   tcpServer.on('request', onRequest);
   tcpServer.on('close', onClose);
   tcpServer.on('error', onError);
-  tcpServer.serve(port, host);
-}
 
+  var o = url.parse(config.upstream);
+  var upstream = {
+    type: (o.protocol == "tcp:") ? 'tcp' : 'udp',
+    address: o.hostname || '8.8.8.8',
+    port: o.port || 53
+  };
+  var wpad = config.wpad || '127.0.0.1';
+
+  udpServer.upstream = upstream;
+  udpServer.wpad = wpad;
+
+  tcpServer.upstream = upstream;
+  tcpServer.wpad = wpad;
+
+  var o = url.parse(config.url);
+  var host = o.hostname || '0.0.0.0';
+  var port = o.port || 53; // dns must on 53
+
+  d.on('error', function(e){
+    // debug('ERROR', e, e.stack);
+    debug('!!!! ERROR %s', e.message);
+  });
+  d.run(function(){
+    udpServer.serve(port, host);
+    tcpServer.serve(port, host);
+  });
+}
 exports.start = start;
 
-// ----
-/*
-if(!module.parent) {
-  start({port:53});
+function stop(){
+  udpServer.close();
+  tcpServer.close();
 }
-*/
+exports.stop = stop;

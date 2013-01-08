@@ -1,7 +1,7 @@
 {
     "name": "pobi",
     "version": "0.0.1",
-    "description": "A `Kill You 3000` package for G.F.W.",
+    "description": "A `Kill You 3000` tool for G.F.W.",
     "author": "jackyz <jackyz.zhao@gmail.com>",
     "dependencies": {
         "native-dns": "https://github.com/jackyz/node-dns/tarball/master"

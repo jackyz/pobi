@@ -1,6 +1,8 @@
-var debug = require('./debug')('WPAD')
-  , getPac = require('./gfw').getPac
-  , http = require('http');
+var url = require('url')
+  , http = require('http')
+  , d = require('domain').create()
+  , debug = require('./debug')('WPAD')
+  , getPac = require('./gfw').getPac;
 
 var wpad_path = '/wpad.da';
 
@@ -22,11 +24,11 @@ function serveWpad(req, res, cb){
   }
 }
 
+// ----
+
+var server = null;
+
 function start(config){
-  // init
-  var host = config.host || '0.0.0.0';
-  var port = config.port || 80; // wpad must on 80
-  //
   var onListening = function(){
     debug("listening on %j", this.address());
   };
@@ -42,19 +44,29 @@ function start(config){
   var onError = function(err){
     debug("error %j", err);
   };
-  var server = http.createServer();
+
+  // init
+  server = http.createServer();
   server.on('listening', onListening);
   server.on('request', onRequest);
   server.on('close', onClose);
   server.on('error', onError);
-  server.listen(port, host);
-}
 
+  var o = url.parse(config.url);
+  var host = o.hostname || '0.0.0.0';
+  var port = o.port || 80; // wpad must on 80
+
+  d.on('error', function(e){
+    // debug('ERROR', e, e.stack);
+    debug('!!!! ERROR %s', e.message);
+  });
+  d.run(function(){
+    server.listen(port, host);
+  });
+}
 exports.start = start;
 
-// ----
-/*
-if(!module.parent) {
-  start({port:80});
+function stop(){
+  server.close();
 }
-*/
+exports.stop = stop;

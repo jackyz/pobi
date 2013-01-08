@@ -1,10 +1,9 @@
-var debug = require('./debug')('HTTP')
-  , http = require('http')
+var net = require('net')
   , url = require('url')
-  , net = require('net')
-  , util = require('util')
+  , http = require('http')
+  , d = require('domain').create()
   , proto = require('./proto')
-  , d = require('domain').create();
+  , debug = require('./debug')('HTTP');
 
 // ---- timeout
 
@@ -112,11 +111,9 @@ function proxy(req, res){
 
 // ----
 
+var server = null;
+
 function start(config){
-  // init
-  var host = config.host || '0.0.0.0';
-  var port = config.port || 8080;
-  //
   var onListening = function(){
     debug("listening on %j via %j", this.address(), this.upstream.config);
   };
@@ -135,27 +132,31 @@ function start(config){
     debug("error %j", err);
   };
 
+  // init
+  server = http.createServer();
+  server.on('listening', onListening);
+  server.on('request', onRequest);
+  server.on('connect', onConnect);
+  server.on('close', onClose);
+  server.on('error', onError);
+
+  server.upstream = proto(config.upstream);
+
+  var o = url.parse(config.url);
+  var host = o.hostname || '0.0.0.0';
+  var port = o.port || 8080;
+
   d.on('error', function(e){
     // debug('ERROR', e, e.stack);
     debug('!!!! ERROR %s', e.message);
   });
   d.run(function(){
-    var server = http.createServer();
-    server.upstream = proto(config.upstream);
-    server.on('listening', onListening);
-    server.on('request', onRequest);
-    server.on('connect', onConnect);
-    server.on('close', onClose);
-    server.on('error', onError);
     server.listen(port, host);
   });
 }
-
 exports.start = start;
 
-// ----
-/*
-if(!module.parent) {
-  start({port:8080});
+function stop(){
+  server.close();
 }
-*/
+exports.stop = stop;
