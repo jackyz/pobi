@@ -178,7 +178,7 @@ Can I use my ssh-D link instead?
 
 ```
 # assume your ssh -D link is `ssh -D1080 YOUR-SERVER`
-sudo npm -g start pobi --worker=shadow://pass@191.168.1.100:1080
+sudo npm -g start pobi --worker=socks5://191.168.1.100:1080
 ```
 
 What if I found a bug?
