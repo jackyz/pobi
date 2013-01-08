@@ -137,7 +137,7 @@ sudo npm -g start pobi --worker=shadow://pass@1.1.1.1:1234
 
 ```bash
 # start the LOCAL on your local machine, and point to the WORKER
-npm -g start pobi --worker=shadow://pass@1.1.1.1:1234`
+npm -g start pobi --worker=shadow://pass@1.1.1.1:1234
 ```
 
 ### Enable `Auto-detect proxy`
