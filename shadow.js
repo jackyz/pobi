@@ -93,7 +93,7 @@ var server = null;
 
 function start(config){
   var onListening = function(){
-    debug("listening on %j via %j", this.address(), this.upstream.config);
+    debug("listening on %j [%s] via %j", this.address(), this.pass, this.upstream.config);
   };
   var onConnection = function(sock){
     // debug("%s connect", sock.remoteAddress);
@@ -114,9 +114,9 @@ function start(config){
   server.on('error', onError);
 
   server.upstream = proto(config.upstream);
-  server.pass = config.pass || 'cool';
 
   var o = url.parse(config.listen);
+  server.pass = o.auth || 'cool';
   var host = o.hostname || '0.0.0.0';
   var port = o.port || 1070;
   //
