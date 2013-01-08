@@ -120,7 +120,7 @@ We will remove the DEBUG flag in production mode, and obviously, you need a serv
 
 ```bash
 # start the WORKER on your remote server.
-npm -g start pobi --app=worker --shadow==shadow://pass@1.1.1.1:1234
+npm -g start pobi --app=worker --shadow=shadow://pass@1.1.1.1:1234
 ```
 
   * on your local machine 
@@ -145,6 +145,7 @@ npm -g start pobi --worker=shadow://pass@1.1.1.1:1234`
 * In IE: `Tool` - `Internet Options` - `Connection` - `Lan` - `Use AutoConfig` - Address:`http://wpad/wpad.dat`
 * In Safari: `Preference` - `Advanced` - `Proxies` - `Auto Proxy Discovery`
 * In Firefox: `Preference` - `Advanced` - `Network` - `Settings` - `Auto-detect proxy setting for this network`
+
 _I need volunteer to complete this list._
 
 ###Upgrade
