@@ -6,14 +6,10 @@
     "dependencies": {
         "native-dns": "https://github.com/jackyz/node-dns/tarball/master"
     },
-    "devDependencies": {
-    },
+    "devDependencies": {},
     "main": "index",
-    "bin": {
-    },
-    "scripts": {
-        "start": "node app.js"
-    },
+    "bin": {},
+    "scripts": {},
     "engines": {
         "node": ">=0.8.4"
     }
