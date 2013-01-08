@@ -52,7 +52,7 @@ function start(config){
   server.on('close', onClose);
   server.on('error', onError);
 
-  var o = url.parse(config.url);
+  var o = url.parse(config.listen);
   var host = o.hostname || '0.0.0.0';
   var port = o.port || 80; // wpad must on 80
 

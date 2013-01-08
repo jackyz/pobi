@@ -1,35 +1,32 @@
 {
   "local": {
     "gfw": {
-      "pac": {
-        "template": "gfw.tmpl",
-        "proxy": "PROXY <%=local.ip%>:8080"
-      }
+      "proxy": "PROXY <%=local.ip%>:8080"
     },
     "dns": {
-      "url": "udp://0.0.0.0:53",
+      "listen": "udp://0.0.0.0:53",
       "wpad": "<%=local.ip%>",
       "upstream": "udp://8.8.8.8:53"
     },
     "wpad": {
-      "url": "http://0.0.0.0:80"
+      "listen": "http://0.0.0.0:80"
      },
     "http": {
-      "url": "http://0.0.0.0:8080",
+      "listen": "http://0.0.0.0:8080",
       "upstream": "socks5://<%=local.ip%>:7070"
     },
     "socks5": {
-      "url": "tcp://0.0.0.0:7070",
+      "listen": "tcp://0.0.0.0:7070",
       "upstream": "<%=local.worker%>"
     }
   },
   "worker": {
     "shadow": {
-      "url": "<%=worker.shadow%>",
+      "listen": "<%=worker.shadow%>",
       "upstream": "direct://"
     },
     "socks5": {
-      "url": "<%=worker.socks5%>",
+      "listen": "<%=worker.socks5%>",
       "upstream": "direct://"
     }
   }

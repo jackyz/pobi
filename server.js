@@ -16,9 +16,11 @@ function getLocalIP(callback) {
   });
 }
 
+var template = "/server.tmpl";
+
 function getConfig(ctx, callback) {
   try {
-    var t = fs.readFileSync(path.dirname(__filename)+"/app.tmpl", 'utf8');
+    var t = fs.readFileSync(path.dirname(__filename)+template, 'utf8');
     var s = tmpl(t, ctx);
     var j = JSON.parse(s);
     callback(undefined, j);
@@ -179,8 +181,8 @@ if (!module.parent) {
       var cfg = config(app);
       for(var mod in cfg){
 	var conf = cfg[mod];
-	debug("start %s:%s %j", app, mod, conf);
-	// require('./'+mod).start(conf);
+	// debug("start %s:%s %j", app, mod, conf);
+	require('./'+mod).start(conf);
       }
     });
   });

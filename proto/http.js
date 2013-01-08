@@ -1,9 +1,8 @@
-var debug = require('../debug')('PROTO:HTTP')
-    , net = require('net')
-    , http = require('http')
-    , util = require('util')
-    , stream = require('stream')
-    , config = require('../util/config');
+var net = require('net')
+  , http = require('http')
+  , util = require('util')
+  , stream = require('stream')
+  , debug = require('../debug')('PROTO:HTTP');
 
 var _host = config('proto', 'http', 'host') || '127.0.0.1';
 var _port = config('proto', 'http', 'port') || 7070;

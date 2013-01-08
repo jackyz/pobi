@@ -1,10 +1,10 @@
-var debug = require('../debug')('PROTO:SHADOW')
-  , net = require('net')
+var net = require('net')
   , url = require('url')
   , util = require('util')
   , stream = require('stream')
   , crypto = require('crypto')
-  , socks5 = require('./socks5');
+  , socks5 = require('./socks5')
+  , debug = require('../debug')('PROTO:SHADOW');
 
 // ---- exports
 

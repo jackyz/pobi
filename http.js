@@ -142,7 +142,7 @@ function start(config){
 
   server.upstream = proto(config.upstream);
 
-  var o = url.parse(config.url);
+  var o = url.parse(config.listen);
   var host = o.hostname || '0.0.0.0';
   var port = o.port || 8080;
 

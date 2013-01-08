@@ -1,7 +1,7 @@
-var debug = require('../debug')('PROTO')
-  , url = require('url')
+var url = require('url')
   , util = require('util')
-  , http = require('http');
+  , http = require('http')
+  , debug = require('../debug')('PROTO');
 
 // ---- upstream socket
 

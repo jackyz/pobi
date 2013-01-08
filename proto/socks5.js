@@ -1,8 +1,8 @@
-var debug = require('../debug')('PROTO:SOCKS5')
-  , net = require('net')
+var net = require('net')
   , url = require('url')
   , util = require('util')
-  , stream = require('stream');
+  , stream = require('stream')
+  , debug = require('../debug')('PROTO:SOCKS5');
 
 // ---- exports
 

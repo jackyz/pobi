@@ -1,7 +1,7 @@
 var fs = require('fs')
   , path = require('path')
   , vm = require('vm')
-  , app = require('./app')
+  , server = require('./server')
   , debug = require('./debug')('GFW');
 
 // ---- implements
@@ -14,9 +14,12 @@ var cache = {};
 
 // ----
 
+var template = '/gfw.tmpl'; // gfw pac template
+
 function start(config){
-  var proxy = config.pac.proxy || "DIRECT";
-  pac = app.tmpl(fs.readFileSync(path.dirname(__filename)+'/'+config.pac.template, 'utf8'), {proxy:proxy});
+  var proxy = config.proxy || "DIRECT";
+  var t = fs.readFileSync(path.dirname(__filename)+template, 'utf8');
+  pac = server.tmpl(t, {proxy:proxy});
   ctx = vm.createContext({});
   vm.runInContext(pac, ctx, 'wpad.dat');
   debug("started");

@@ -135,7 +135,7 @@ function start(config){
   tcpServer.upstream = upstream;
   tcpServer.wpad = wpad;
 
-  var o = url.parse(config.url);
+  var o = url.parse(config.listen);
   var host = o.hostname || '0.0.0.0';
   var port = o.port || 53; // dns must on 53
 
