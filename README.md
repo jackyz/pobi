@@ -160,8 +160,21 @@ Why old http proxy protocol?
 * It's the only proxy protocol works on every browser, even for old ie5.5 and opera. And the http proxy is delegate to socks5 proxy, the overhead is small. You could test by your own.
 
 ```
+# direct
+time for i in `seq 1 10`; do curl http://qq.com > /dev/null; done
+# via http proxy
 time for i in `seq 1 10`; do curl -x http://192.168.1.100:8080 http://qq.com > /dev/null; done
+# via socks5 proxy
 time for i in `seq 1 10`; do curl -x socks5://192.168.1.100:7070 http://qq.com > /dev/null; done
+```
+
+Can I use my ssh-D link instead?
+
+* Of course. You can switch between upstreams, just start LOCAL like this.
+
+```
+# assume your ssh -D link is `ssh -D1080 YOUR-SERVER`
+sudo npm -g start pobi --worker=shadow://pass@191.168.1.100:1080
 ```
 
 What if I found a bug?
