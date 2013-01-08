@@ -64,8 +64,9 @@ Go http://nodejs.org/download/ download and install the latest version.
 ###Install pobi
 
 ```
-npm install -g https://github.com/jackyz/pobi/tarball/master
+npm -g install https://github.com/jackyz/pobi/tarball/master
 ```
+
 _I'm not sure if it's the right place, any suggestion?_
 
 ###Run for test
@@ -148,8 +149,11 @@ _I need volunteer to complete this list._
 
 ###Upgrade
 
+Because this package was not added to the npm repo(I don't want to make npm was block too). So `npm update` just doesn't work. But you can upgrade easily by remove and install again.
+
 ```
-npm update -g
+npm -g remove pobi
+npm -g install https://github.com/jackyz/pobi/tarball/master
 ```
 
 Q & A
