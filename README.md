@@ -123,9 +123,7 @@ We will remove the DEBUG flag in production mode, and obviously, you need a serv
 npm -g start pobi --app=worker --shadow=shadow://pass@1.1.1.1:1234
 ```
 
-  * on your local machine 
-
-    * linux/macosx
+  * on your local machine (linux/macosx)
 
 ```bash
 # start the LOCAL on your local machine, and point to the WORKER
@@ -133,7 +131,7 @@ npm -g start pobi --app=worker --shadow=shadow://pass@1.1.1.1:1234
 sudo npm -g start pobi --worker=shadow://pass@1.1.1.1:1234
 ```
 
-    * windows
+  * on your local machine (windows)
 
 ```bash
 # start the LOCAL on your local machine, and point to the WORKER
