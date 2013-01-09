@@ -79,7 +79,7 @@ function start(config){
       queryGfw.call(this, d, function(e,r){
         if(e) {
           debug("%s: Query [GFW] %j : %j", req.ip, d, e);
-	  res.header.rcode = ndns.consts.NAME_TO_RCODE.NOTFOUND;
+	  // res.header.rcode = ndns.consts.NAME_TO_RCODE.NOTFOUND;
         } else {
           r.forEach(function(ip){
             res.answer.push(ndns.A({ name: d, address: ip, ttl: 300 }));
