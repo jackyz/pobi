@@ -6,7 +6,7 @@ var fs = require('fs')
 // ----
 
 function getLocalIP(callback) {
-  var socket = net.createConnection(80, 'qq.com');
+  var socket = net.createConnection(53, '8.8.8.8');
   socket.on('connect', function() {
     callback(undefined, socket.address().address);
     socket.end();
