@@ -12,7 +12,7 @@
  *  needs to improve
  */
 function FindProxyForURL(url, host) {
-  var PROXY = "<%=proxy%>";
+  var PROXY = "PROXY 127.0.0.1:8080";
   var DEFAULT = "DIRECT";
 
   //-- AUTO-GENERATED RULES, DO NOT MODIFY!

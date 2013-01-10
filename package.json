@@ -4,7 +4,7 @@
     "description": "A `Kill You 3000` tool for G.F.W.",
     "author": "jackyz <jackyz.zhao@gmail.com>",
     "dependencies": {
-        "native-dns": "https://github.com/jackyz/node-dns/tarball/master"
+        "native-dns": "https://github.com/tjfontaine/node-dns/tarball/master"
     },
     "devDependencies": {},
     "main": "index",
