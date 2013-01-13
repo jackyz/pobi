@@ -18,8 +18,7 @@ var init = false;
 var pac = null;
 var black = null;
 var white = null;
-var uCache = {};
-var dCache = {};
+var cache = {};
 
 function start(config){
   var proxy = config.proxy || "DIRECT";
@@ -28,6 +27,7 @@ function start(config){
   vm.runInContext(fs.readFileSync(path.dirname(__filename)+blackList, 'utf8'), black, 'blacklist');
   white = vm.createContext({});
   vm.runInContext(fs.readFileSync(path.dirname(__filename)+blackList, 'utf8'), white, 'whitelist');
+  cache = {};
   init = true;
   debug("started");
 }
@@ -35,11 +35,10 @@ exports.start = start;
 
 function stop(){
   init = false;
-  pac = null;
-  uCache = {};
-  dCache = {};
+  cache = {};
   black = null;
   white = null;
+  pac = null;
   debug("stoped");
 }
 exports.stop = stop;
@@ -50,32 +49,6 @@ function getPac(){
 }
 exports.getPac = getPac;
 
-function identifyDomain(d,v){
-  // check domain against whitelist and blacklist
-  if (!init) throw new Error("NOT_INIT_YET");
-  // set
-  if (v) {
-    debug('identifyDomain(%s,%s)', d, v);
-    return dCache[d] = v;
-  }
-  // get :: use cache to speed up
-  var r = dCache[d];
-  if (!r) {
-    if (true) {
-      var v1 = white.FindProxyForURL('http://'+d, d);
-      r = (v1 == 'DIRECT') ? 'white' : 'gray';
-    }
-    if (r == 'gray') {
-      var v2 = black.FindProxyForURL('http://'+d, d);
-      r = (v2 == 'DIRECT') ? 'gray' : 'black';
-    }
-    dCache[d] = r;
-  }
-  debug('identifyDomain(%s):%s', d, r);
-  return r;
-}
-exports.identifyDomain = identifyDomain;
-
 function checkDomain(d){
   // TODO make sure if the domain is blackhole
   // mark as black for now
@@ -83,27 +56,44 @@ function checkDomain(d){
 }
 exports.checkDomain = checkDomain;
 
-function identifyUrl(u,v){
-  // check url against whitelist and blacklist
+function identifyDomain(d, v){
+  return identifyUrl('http://'+d, v);
+}
+exports.identifyDomain = identifyDomain;
+
+function identifyUrl(u, v){
+  // check url against white and black list
   if (!init) throw new Error("NOT_INIT_YET");
   // set
   if (v) {
     debug('identifyUrl(%s,%s)', u, v);
-    return uCache[u] = v;
+    return cache[u] = v;
   }
   // get :: use cache to speed up
-  var r = uCache[u];
+  var r = cache[u];
   if (!r) {
     var d = url.parse(u).hostname;
-    if (true) {
-      var v1 = white.FindProxyForURL(u, d);
-      r = (v1 == 'DIRECT') ? 'white' : 'gray';
+    // debug("%j : %j", d, u);
+    if ('http://'+d == u) {
+      // we are checking domain
+      // check domain againset domain white list
+      // var v1 = white.FindProxyForURL(u, d);
+      // r = (v1 == 'DIRECT') ? 'white' : 'gray';
+      r = 'gray';
+    } else {
+      // we are checking url
+      r = identifyDomain(d); // check domain first
+      if (r == 'gray') {
+	// if domain is black, then all url is black
+	// if domain is white, then all url is white
+	// if domain is gray, then need check url againset gfwlist
+	// var v2 = black.FindProxyForURL(u, d);
+	// r = (v2 == 'DIRECT') ? 'gray' : 'black';
+	r = 'gray';
+      }
     }
-    if (r == 'gray') {
-      var v2 = black.FindProxyForURL(u, d);
-      r = (v2 == 'DIRECT') ? 'gray' : 'black';
-    }
-    uCache[u] = r;
+    // r = 'gray'; short cut
+    cache[u] = r;
   }
   debug('identifyUrl(%s):%s', u, r);
   return r;

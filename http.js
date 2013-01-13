@@ -9,41 +9,60 @@ var net = require('net')
 // ---- timeout
 
 var connectTimeout = 2000; // 2 second
-var transferTimeout = 30000; // 30 second
+var transferTimeout = 5000; // 5 second
 
 var app = process.env.npm_config_app || 'local';
 
 // ----
 
+// tunnel /// https going this way
 function tunnel(req, sock, head){
-  function fail(e){
-    debug('%s : tunnel %s FAIL %j', req.ip, req.url, e);
-    sock.end('HTTP/1.0 500 Connect fail\r\n\r\n\r\n');
-  }
   var host = url.parse('http://'+req.url).hostname;
   var color = (app != 'local') ? 'white' : gfw.identifyDomain(host);
-  if (color == 'white') {
-    _tunnel(server.direct, req, sock, head, fail);
-  } else if (color == 'black') {
-    _tunnel(server.upstream, req, sock, head, fail);
-  } else { // it's gray
+  debug('%s : tunnel [%s] %s ... %s', req.ip, color, req.url, server.connections);
+  function endup(e){
+    if (e){
+      debug('%s : tunnel [%s] %s FAIL %j', req.ip, color, req.url, e);
+      sock.end('HTTP/1.0 500 Connect fail\r\n\r\n\r\n');
+    } else {
+      debug('%s : tunnel [%s] %s OK', req.ip, color, req.url);
+    }
+  }
+  if (color == 'black') {
+    _tunnel(server.upstream, req, sock, head, endup);
+  } else if (color == 'white') {
+    _tunnel(server.direct, req, sock, head, endup);
+  } else { // i don't know, call it gray
     _tunnel(server.direct, req, sock, head, function(e){
-      if (e.code == 'ETIMEOUT') {
-	debug('%s : tunnel %s RETRY', req.ip, req.url);
-	_tunnel(server.upstream, req, sock, head, fail);
-	// there is no ECONNRESET
-	// TimeOut means ip is a blackhole or normal ip temp down
-	// nothing can do for now but check domain for next time
-	gfw.checkDomain(host);
+      if (!e) {
+	// if direct success, mark as white to speed up
+	gfw.identifyDomain(host, 'white');
+	endup();
+      } else if (e.code == 'ETIMEOUT') {
+	// seems there is no ECONNRESET
+	// TimeOut means ip is a blackhole or normal server down
+	// retry via upstream if ok, mark as black
+	debug('%s : tunnel [%s] %s TIMEOUT RETRY', req.ip, color, req.url);
+	color = 'black';
+	_tunnel(server.upstream, req, sock, head, function(e){
+	  if (!e) {
+	    // if ok now, it's a blackhole, tell dns to skip it
+	    gfw.identifyDomain(host, 'black');
+	    endup();
+	  } else {
+	    // if same error, could be normal server down
+	    endup(e);
+	  }
+	});
       } else {
-	fail(e);
+	endup(e);
       }
     });
   }
 }
 
-function _tunnel(upstream, req, sock, head, fail){
-  debug('%s : tunnel %s ... :%s', req.ip, req.url, server.connections);
+function _tunnel(upstream, req, sock, head, callback){
+  // debug('%s : tunnel %s ... :%s', req.ip, req.url, server.connections);
   var o = url.parse('http://'+req.url);
   var uerr = null;
   var usock = upstream.createConnection(o.port, o.hostname);
@@ -53,33 +72,35 @@ function _tunnel(upstream, req, sock, head, fail){
     try { usock.destroy(); } catch(x) { }
     uerr = new Error('connect timeout');
     uerr.code = 'ETIMEOUT';
-    fail(uerr);
+    callback(uerr);
   }
   function conError(e){
     // debug('%s : tunnel %s CONN ERROR %j', req.ip, req.url, e);
     try { usock.destroy(); } catch(x) { }
-    fail(uerr ? uerr : e);
+    callback(uerr ? uerr : e);
   }
 
   usock.setTimeout(connectTimeout, conTimeout);
   usock.on('error', conError);
 
-  function close(){
-    // debug('%s : tunnel %s EST END', req.ip, req.url);
-    // debug('%s : tunnel %s DONE :%s', req.ip, req.url, server.connections);
-    try { sock.destroy(); } catch(x){ }
-    try { usock.destroy(); } catch(x){ }
-  }
-  function timeout(){
-    // debug('%s : tunnel %s EST TIMEOUT', req.ip, req.url);
-    close();
-  }
-  function error(e){
-    // debug('%s : tunnel %s EST ERROR %j', req.ip, req.url, e);
-    close();
-  }
-
   usock.on('connect', function(){
+
+    function close(){
+      // debug('%s : tunnel %s EST END', req.ip, req.url);
+      // debug('%s : tunnel %s DONE :%s', req.ip, req.url, server.connections);
+      try { sock.destroy(); } catch(x){ }
+      try { usock.destroy(); } catch(x){ }
+      callback();
+    }
+    function timeout(){
+      // debug('%s : tunnel %s EST TIMEOUT', req.ip, req.url);
+      close();
+    }
+    function error(e){
+      // debug('%s : tunnel %s EST ERROR %j', req.ip, req.url, e);
+      close();
+    }
+
     // debug('%s : tunnel %s EST BEGIN', req.ip, req.url);
     usock.removeListener('error', conError); usock.on('error', error);
     usock.setTimeout(transferTimeout, timeout);
@@ -99,35 +120,52 @@ function _tunnel(upstream, req, sock, head, fail){
 // ----
 
 function proxy(req, res){
-  function fail(e){
-    debug('%s : proxy %s %s FAIL %j', req.ip, req.method, req.url, e);
-    res.statusCode = 500;
-    res.end(e.code);
-  }
   var color = (app != 'local') ? 'white' : gfw.identifyUrl(req.url);
-  if (color == 'white') {
-    _proxy(server.direct, req, res, fail);
-  } else if (color == 'black') {
-    _proxy(server.upstream, req, res, fail);
-  } else { // it's gray
+  debug('%s : proxy [%s] %s %s ... %s', req.ip, color, req.method, req.url, server.connections);
+  function endup(e){
+    if(e){
+      debug('%s : proxy [%s] %s %s FAIL %j', req.ip, color, req.method, req.url, e);
+      res.statusCode = 500;
+      res.end(e.code);
+    } else {
+      debug('%s : proxy [%s] %s %s OK', req.ip, color, req.method, req.url);
+    }
+  }
+  if (color == 'black') {
+    _proxy(server.upstream, req, res, endup);
+  } else if (color == 'white') {
+    _proxy(server.direct, req, res, endup);
+  } else { // i don't know, call it gray
     _proxy(server.direct, req, res, function(e){
-      if (e.code == 'ECONNRESET') {
-	debug('%s : proxy %s %s RETRY', req.ip, req.method, req.url);
-	_proxy(server.upstream, req, res, fail);
-	// ECONNRESET means reset by gfw, mark as black
+      if (!e) {
+	// gfw.identifyUrl(req.url, 'white'); // do not mark to save memory
+	endup();
+      } else if (e.code == 'ECONNRESET') {
+	// ECONNRESET means reset by gfw
+	debug('%s : proxy [%s] %s %s RESET RETRY', req.ip, color, req.method, req.url);
 	gfw.identifyUrl(req.url, 'black');
-      } else {
-	fail(e);
-	// TimeOut means ip is a blackhole or normal ip temp down
-	// nothing can do for now, but should check domain for next time
-	if (e.code == 'ETIMEOUT') gfw.checkDomain(url.parse(req.url).hostname);
+	color = 'black';
+	_proxy(server.upstream, req, res, endup);
+      } else if (e.code == 'ETIMEOUT') {
+	// ETIMEOUT means ip was block or normal server down
+	debug('%s : proxy [%s] %s %s TIMEOUT RETRY', req.ip, color, req.method, req.url);
+	color = 'black';
+	_proxy(server.upstream, req, res, function(e){
+	  if (!e) {
+	    var d = url.parse(req.url).hostname;
+	    gfw.identifyDomain(d, 'black');
+	    endup();
+	  } else {
+	    endup(e);
+	  }
+	});
       }
     });
   }
 }
 
-function _proxy(upstream, req, res, fail){
-  debug('%s : proxy %s %s ... :%s', req.ip, req.method, req.url, server.connections);
+function _proxy(upstream, req, res, callback){
+  // debug('%s : proxy %s %s ... :%s', req.ip, req.method, req.url, server.connections);
   var o = url.parse(req.url);
   // expose ip
   var headers = req.headers;
@@ -156,11 +194,15 @@ function _proxy(upstream, req, res, fail){
   }
   function conError(e){
     // debug('%s : proxy %s %s CONN ERROR %j', req.ip, req.method, req.url, e);
-    fail(uerr ? uerr : e);
+    ureq.abort();
+    callback(uerr ? uerr : e);
   }
 
   ureq.on('error', conError);
-  ureq.setTimeout(connectTimeout, conTimeout);
+  // ureq.setTimeout(connectTimeout, conTimeout);
+  ureq.on('socket', function(socket){
+    socket.setTimeout(connectTimeout, conTimeout);
+  });
   ureq.end(); // manually call end // req.on('end', ureq.end);
 
   function timeout(){
@@ -178,6 +220,7 @@ function _proxy(upstream, req, res, fail){
     // debug('%s : proxy %s %s DONE :%s', req.ip, req.method, req.url, server.connections);
     try { res.end(); } catch(x){ }
     try { ureq.abort(); } catch(x){ }
+    callback();
   }
 
   ureq.on('response', function(ures){

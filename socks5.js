@@ -8,7 +8,7 @@ var url = require('url')
 // ---- timeout
 
 var connectTimeout = 2000; // 2 second
-var transferTimeout = 30000; // 30 second
+var transferTimeout = 5000; // 5 second
 
 // ----
 
@@ -69,7 +69,7 @@ function serve(sock){
     usock.on('end', close);
     usock.on('connect', function(){
       // debug('%s CONNECTED', sock.remoteAddress);
-      // debug("%s -> %s:%s", sock.remoteAddress, address.host, address.port)
+      debug("%s -> %s:%s", sock.remoteAddress, address.host, address.port)
       usock.setTimeout(transferTimeout, timeout);
       usock.setNoDelay(true);
       while(buff.length) usock.write(buff.shift());

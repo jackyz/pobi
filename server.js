@@ -143,6 +143,14 @@ process.on('uncaughtException', function(e){
 // npm -g start --app=worker --worker_shadow=shadow://pass@1.2.3.4:5678 --worker_socks5=socks5://1.2.3.4:5678
 
 if (!module.parent) {
+
+  var ldns = process.env.npm_config_ldns; // || 'udp://192.168.1.1:53';
+  if (!ldns) {
+    console.log('It will really slow, we need your local dns to speed up.');
+    console.log('  example: sudo npm start --ldns=udp://192.168.1.1:53');
+    // process.exit(1);
+  }
+
   getLocalIP(function (error, localip) {
     if (error) return console.log('Not Online? error:', error);
     var app = process.env.npm_config_app || 'local';
@@ -150,6 +158,7 @@ if (!module.parent) {
     var ctx = {
       local: {
 	ip: ip,
+	ldns: ldns || 'udp://192.168.0.1:53',
 	worker: process.env.npm_config_worker || 'shadow://cool@'+ip+':1027'
       },
       worker: {
