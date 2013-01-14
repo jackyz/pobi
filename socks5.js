@@ -7,8 +7,8 @@ var url = require('url')
 
 // ---- timeout
 
-var connectTimeout = 2000; // 2 second
-var transferTimeout = 5000; // 5 second
+var CONTIMEOUT = 3000; // 3 second
+var ESTTIMEOUT = 5000; // 5 second
 
 // ----
 
@@ -64,18 +64,18 @@ function serve(sock){
     if(address.length < d.length) buff.push(d.slice(address.length));
     // debug("%s con %s:%s", sock.remoteAddress, address.host, address.port)
     usock = self.upstream.createConnection(address.port, address.host);
-    usock.setTimeout(connectTimeout, timeout);
+    usock.setTimeout(CONTIMEOUT, timeout);
     usock.on('error', error);
     usock.on('end', close);
     usock.on('connect', function(){
       // debug('%s CONNECTED', sock.remoteAddress);
       debug("%s -> %s:%s", sock.remoteAddress, address.host, address.port)
-      usock.setTimeout(transferTimeout, timeout);
+      usock.setTimeout(ESTTIMEOUT, timeout);
       usock.setNoDelay(true);
       while(buff.length) usock.write(buff.shift());
       sock.removeListener('data', await);
       sock.pipe(usock);
-      // sock.setTimeout(transferTimeout, timeout);
+      // sock.setTimeout(ESTTIMEOUT, timeout);
       sock.setNoDelay(true);
       var resp = new Buffer(d.length);
       d.copy(resp);
@@ -86,7 +86,7 @@ function serve(sock){
       usock.pipe(sock);
     });
   }
-  sock.setTimeout(transferTimeout, timeout);
+  sock.setTimeout(ESTTIMEOUT, timeout);
   // sock.setNoDelay(true);
   sock.on('error', error);
   sock.on('data', handshake);

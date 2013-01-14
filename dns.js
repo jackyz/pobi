@@ -2,29 +2,79 @@ var url = require('url')
   , ndns = require('native-dns')
   , d = require('domain').create()
   , gfw = require('./gfw')
-  , debug = require('./debug')('DNS')
+  , debug = require('./debug')('DNS');
+
+// ----
 
 var wpad_domain = 'wpad';
-var timeout = 2000;
 
-function query(up, q, cb){
+var TIMEOUT = 2000; // 2 second
+
+// ----
+
+function serve_wpad(req, res){
   var self = this;
-  var err = null;
+  var dn = req.question[0].name;
+  res.answer.push(ndns.A({
+    name:wpad_domain, address:self.wpad, ttl:600
+  }));
+  res.send();
+  debug("%s: Query [WPAD] %j -> %j", req.ip, dn, [self.wpad]);
+}
+
+function serve_query(req, res){
+  var self = this;
+  var q = req.question[0];
+  var dn = q.name;
+  var color = (q.type==1 && q.class==1) ? gfw.identifyDomain(dn) : 'white';
+  _query.call(self, color, req, res);
+}
+
+function _query(color, req, res){
+  var self = this;
+  var q = req.question[0];
+  var dn = q.name;
+  var uerr = null;
   var result = [];
   var ureq = ndns.Request({
     question: q,
-    server: up,
-    timeout: timeout,
+    server: (color == 'black') ? self.upstream : self.direct,
+    timeout: TIMEOUT,
     cache: false
   });
+  function qEnd(e){
+    if (uerr) return; else uerr = e; // do not process error again
+    if(!e) {
+      debug("%s: Query [%s] %j OK", req.ip, color, dn);
+      // console.dir(r);
+      res.answer = result;
+      res.send();
+    } else if (color == 'gray' && e.code == 'ETIMEOUT'){
+      debug("%s: Query [%s] %j TIMEOUT RETRY", req.ip, color, dn);
+      _query.call(self, 'black', req, res);
+    } else {
+      // res.header.rcode = ndns.consts.NAME_TO_RCODE.NOTFOUND;
+      // empty response
+      res.send();
+    }
+  }
   ureq.on('timeout', function(){
-    err = 'ETIMEOUT';
+    var e = new Error('timeout');
+    e.code = 'ETIMEOUT';
+    qEnd(e);
+  });
+  ureq.on('error', function(e){
+    qEnd(e);
+  });
+  ureq.on('message', function(){
+    // connect ok, confirm the color
+    gfw.identifyDomain(dn, (color == 'black') ? 'black' : 'white');
   });
   ureq.on('message', function (e, r) {
     r.answer.forEach(function (a) { result.push(a); });
   });
   ureq.on('end', function () {
-    cb(err, result);
+    qEnd();
   });
   ureq.send();
 }
@@ -47,33 +97,11 @@ function start(config){
     var self = this;
     req.ip = req._socket._remote.address;
     var q = req.question[0];
-    var d = q.name;
-    if(q['type'] == 1 && q['class'] == 1 && startsWith(d,wpad_domain)) {
-      // resolve WPAD name
-      res.answer.push(ndns.A({
-	name:wpad_domain, address:self.wpad, ttl:600
-      }));
-      res.send();
-      debug("%s: Query [WPAD] %j -> %j", req.ip, d, [self.wpad]);
+    var dn = q.name;
+    if(q.type == 1 && q.class == 1 && startsWith(dn,wpad_domain)) {
+      serve_wpad.call(self, req, res);
     } else {
-      var up = self.direct;
-      var color = 'white';
-      if (q.type == 1 && q.class == 1) {
-	color = gfw.identifyDomain(d);
-	up = (color == 'black') ? self.upstream : self.direct;
-      }
-      query(up, q, function(e,r){
-	if(e) {
-	  debug("%s: Query [%s] %j FAIL %j", req.ip, color, d, e);
-	  // res.header.rcode = ndns.consts.NAME_TO_RCODE.NOTFOUND;
-	  res.send(); // empty response
-        } else {
-	  // console.dir(r);
-	  res.answer = r;
-	  debug("%s: Query [%s] %j OK", req.ip, color, d);
-          res.send();
-        }
-      });
+      serve_query.call(self, req, res);
     }
   };
   var onClose = function(){

@@ -8,8 +8,8 @@ var net = require('net')
 
 // ---- timeout
 
-var connectTimeout = 2000; // 2 second
-var transferTimeout = 5000; // 5 second
+var CONTIMEOUT = 3000; // 3 second
+var ESTTIMEOUT = 5000; // 5 second
 
 var app = process.env.npm_config_app || 'local';
 
@@ -17,102 +17,88 @@ var app = process.env.npm_config_app || 'local';
 
 // tunnel /// https going this way
 function tunnel(req, sock, head){
+  var self = this;
   var host = url.parse('http://'+req.url).hostname;
   var color = (app != 'local') ? 'white' : gfw.identifyDomain(host);
-  debug('%s : tunnel [%s] %s ... %s', req.ip, color, req.url, server.connections);
-  function endup(e){
-    if (e){
-      debug('%s : tunnel [%s] %s FAIL %j', req.ip, color, req.url, e);
-      sock.end('HTTP/1.0 500 Connect fail\r\n\r\n\r\n');
-    } else {
-      debug('%s : tunnel [%s] %s OK', req.ip, color, req.url);
-    }
-  }
-  if (color == 'black') {
-    _tunnel(server.upstream, req, sock, head, endup);
-  } else if (color == 'white') {
-    _tunnel(server.direct, req, sock, head, endup);
-  } else { // i don't know, call it gray
-    _tunnel(server.direct, req, sock, head, function(e){
-      if (!e) {
-	// if direct success, mark as white to speed up
-	gfw.identifyDomain(host, 'white');
-	endup();
-      } else if (e.code == 'ETIMEOUT') {
-	// seems there is no ECONNRESET
-	// TimeOut means ip is a blackhole or normal server down
-	// retry via upstream if ok, mark as black
-	debug('%s : tunnel [%s] %s TIMEOUT RETRY', req.ip, color, req.url);
-	color = 'black';
-	_tunnel(server.upstream, req, sock, head, function(e){
-	  if (!e) {
-	    // if ok now, it's a blackhole, tell dns to skip it
-	    gfw.identifyDomain(host, 'black');
-	    endup();
-	  } else {
-	    // if same error, could be normal server down
-	    endup(e);
-	  }
-	});
-      } else {
-	endup(e);
-      }
-    });
-  }
+  _tunnel.call(this, color, req, sock, head);
 }
 
-function _tunnel(upstream, req, sock, head, callback){
-  // debug('%s : tunnel %s ... :%s', req.ip, req.url, server.connections);
+function _tunnel(color, req, sock, head){
+
+  debug('%s : tunnel [%s] %s ING %s', req.ip, color, req.url, server.connections);
+  var self = this;
   var o = url.parse('http://'+req.url);
+  var upstream = (color == 'black') ? self.upstream : self.direct;
   var uerr = null;
   var usock = upstream.createConnection(o.port, o.hostname);
 
-  function conTimeout(){
-    // debug('%s : tunnel %s CONN TIMEOUT', req.ip, req.url);
+  function conEnd(e){
+    if (uerr) return; else uerr = e; // do not process error again
     try { usock.destroy(); } catch(x) { }
-    uerr = new Error('connect timeout');
-    uerr.code = 'ETIMEOUT';
-    callback(uerr);
+    if (color == 'gray' && e.code == 'ETIMEOUT') {
+      debug('%s : tunnel [%s] %s CON TIMEOUT RETRY', req.ip, color, req.url);
+      _tunnel.call(self, 'black', req, sock, head);
+    } else {
+      debug('%s : tunnel [%s] %s CON FAIL %j', req.ip, color, req.url, e);
+      sock.end('HTTP/1.0 500 Connect fail\r\n\r\n\r\n');
+    }
+  }
+  function conTimeout(){
+    // debug('%s : tunnel [%s] %s CON TIMEOUT', req.ip, color, req.url);
+    var e = new Error('connect timeout');
+    e.code = 'ETIMEOUT';
+    conEnd(e);
   }
   function conError(e){
-    // debug('%s : tunnel %s CONN ERROR %j', req.ip, req.url, e);
-    try { usock.destroy(); } catch(x) { }
-    callback(uerr ? uerr : e);
+    // debug('%s : tunnel [%s] %s CON ERROR %j', req.ip, color, req.url, e);
+    conEnd(e);
   }
 
-  usock.setTimeout(connectTimeout, conTimeout);
+  usock.setTimeout(CONTIMEOUT, conTimeout);
   usock.on('error', conError);
-
   usock.on('connect', function(){
 
-    function close(){
-      // debug('%s : tunnel %s EST END', req.ip, req.url);
-      // debug('%s : tunnel %s DONE :%s', req.ip, req.url, server.connections);
+    // connect ok, confirm the color
+    gfw.identifyDomain(o.hostname, (color == 'black') ? 'black' : 'white');
+
+    function estEnd(e){
+      // debug('%s : tunnel [%s] %s DONE :%s', req.ip, color, req.url, server.connections);
+      if (uerr) return; else uerr = e; // do not process error again
       try { sock.destroy(); } catch(x){ }
       try { usock.destroy(); } catch(x){ }
-      callback();
+      if (!e) {
+	debug('%s : tunnel [%s] %s EST END OK', req.ip, color, req.url);
+      } else {
+	debug('%s : tunnel [%s] %s EST END FAIL %j', req.ip, color, req.url, e);
+      }
     }
-    function timeout(){
-      // debug('%s : tunnel %s EST TIMEOUT', req.ip, req.url);
-      close();
+    function estTimeout(){
+      // debug('%s : tunnel [%s] %s EST TIMEOUT', req.ip, color, req.url);
+      var e = new Error('timeout');
+      e.code = 'ETIMEOUT';
+      estEnd(e);
     }
-    function error(e){
-      // debug('%s : tunnel %s EST ERROR %j', req.ip, req.url, e);
-      close();
+    function estError(e){
+      // debug('%s : tunnel [%s] %s EST ERROR %j', req.ip, color, req.url, e);
+      estEnd(e);
     }
 
-    // debug('%s : tunnel %s EST BEGIN', req.ip, req.url);
-    usock.removeListener('error', conError); usock.on('error', error);
-    usock.setTimeout(transferTimeout, timeout);
-    usock.on('end', close);
+    debug('%s : tunnel [%s] %s EST BEGIN', req.ip, color, req.url);
+    usock.removeListener('error', conError); usock.on('error', estError);
+    usock.removeListener('timeout', conTimeout); usock.on('timeout', estTimeout);
+    usock.setTimeout(ESTTIMEOUT);
+    usock.on('end', estEnd);
     usock.setNoDelay(true);
     usock.write(head);
     sock.pipe(usock);
-    sock.setTimeout(transferTimeout, timeout);
+    sock.setTimeout(ESTTIMEOUT, estTimeout);
     sock.setNoDelay(true);
-    sock.on('error', error);
-    sock.on('end', close);
-    sock.write('HTTP/1.0 200 Connect ok\r\n\r\n\r\n');
+    sock.on('error', estError);
+    sock.on('end', estEnd);
+    sock.write('HTTP/1.1 200 Connection Established\r\n'+
+      'Proxy-agent: Pobi-Http-Proxy\r\n'+
+      '\r\n');
+    sock.write(head);
     usock.pipe(sock);
   });
 }
@@ -120,120 +106,120 @@ function _tunnel(upstream, req, sock, head, callback){
 // ----
 
 function proxy(req, res){
+  var self = this;
+  req.pause(); // pause data to prevent lost, after connect resume
   var color = (app != 'local') ? 'white' : gfw.identifyUrl(req.url);
-  debug('%s : proxy [%s] %s %s ... %s', req.ip, color, req.method, req.url, server.connections);
-  function endup(e){
-    if(e){
-      debug('%s : proxy [%s] %s %s FAIL %j', req.ip, color, req.method, req.url, e);
-      res.statusCode = 500;
-      res.end(e.code);
-    } else {
-      debug('%s : proxy [%s] %s %s OK', req.ip, color, req.method, req.url);
-    }
-  }
-  if (color == 'black') {
-    _proxy(server.upstream, req, res, endup);
-  } else if (color == 'white') {
-    _proxy(server.direct, req, res, endup);
-  } else { // i don't know, call it gray
-    _proxy(server.direct, req, res, function(e){
-      if (!e) {
-	// gfw.identifyUrl(req.url, 'white'); // do not mark to save memory
-	endup();
-      } else if (e.code == 'ECONNRESET') {
-	// ECONNRESET means reset by gfw
-	debug('%s : proxy [%s] %s %s RESET RETRY', req.ip, color, req.method, req.url);
-	gfw.identifyUrl(req.url, 'black');
-	color = 'black';
-	_proxy(server.upstream, req, res, endup);
-      } else if (e.code == 'ETIMEOUT') {
-	// ETIMEOUT means ip was block or normal server down
-	debug('%s : proxy [%s] %s %s TIMEOUT RETRY', req.ip, color, req.method, req.url);
-	color = 'black';
-	_proxy(server.upstream, req, res, function(e){
-	  if (!e) {
-	    var d = url.parse(req.url).hostname;
-	    gfw.identifyDomain(d, 'black');
-	    endup();
-	  } else {
-	    endup(e);
-	  }
-	});
-      }
-    });
-  }
+  _proxy.call(self, color, req, res);
 }
 
-function _proxy(upstream, req, res, callback){
-  // debug('%s : proxy %s %s ... :%s', req.ip, req.method, req.url, server.connections);
+function _proxy(color, req, res){
+
+  debug('%s : proxy [%s] %s %s ING %s', req.ip, color, req.method, req.url, server.connections);
+  var self = this;
   var o = url.parse(req.url);
+  // if (o.hostname == 'ocsp.digicert.com') console.dir(req.headers); // buggy
+  var upstream = (color == 'black') ? self.upstream : self.direct;
   // expose ip
-  var headers = req.headers;
-  headers['X-Forwarded-Proto'] = "http";
-  if (headers['X-Forwarded-For']){
-    headers['X-Forwarded-For'] += ', '+req.ip;
-  } else {
-    headers['X-Forwarded-For'] = req.ip;
-  }
-  var ropts = {
+  // var headers = req.headers;
+  // headers['X-Forwarded-Proto'] = "http";
+  // if (headers['X-Forwarded-For']){
+  //    headers['X-Forwarded-For'] += ', '+req.ip;
+  // } else {
+  //    headers['X-Forwarded-For'] = req.ip;
+  // }
+  var uerr = null;
+  var ureq = http.request( {
     host: o.hostname,
     port: o.port,
     path: o.path,
     method: req.method,
-    headers: headers, // req.headers,
+    headers: req.headers, // headers
     agent: upstream.agent // using the upstream
     // agent: false, // using the original http
-  };
-  var uerr = null;
-  var ureq = http.request(ropts);
+  });
 
+  function conEnd(e){
+    if (uerr) return; else uerr = e; // do not process error again
+    try { ureq.abort(); } catch(x){ }
+    if (color == 'gray' && e.code == 'ECONNRESET') {
+      // it's a reset url
+      debug('%s : proxy [%s] %s %s CON RESET RETRY', req.ip, color, req.method, req.url);
+      _proxy.call(self, 'black', req, res);
+    } else if (color == 'gray' && e.code == 'ETIMEOUT') {
+      // it's a blackholed domain
+      debug('%s : proxy [%s] %s %s CON TIMEOUT RETRY', req.ip, color, req.method, req.url);
+      // gfw.identifyDomain(o.hostname, 'black');
+      _proxy.call(self, 'black', req, res);
+    } else {
+      debug('%s : proxy [%s] %s %s CON FAIL %j', req.ip, color, req.method, req.url, e);
+      res.statusCode = 500;
+      res.end(e.code);
+    }
+  }
   function conTimeout(){
-    // debug('%s : proxy %s %s CONN TIMEOUT', req.ip, req.method, req.url);
-    uerr = new Error('connect timeout');
-    uerr.code = 'ETIMEOUT'; // will trigger conError with a 'ECONNRESET'
+    // debug('%s : proxy [%s] %s %s CON TIMEOUT', req.ip, color, req.method, req.url);
+    var e = new Error('connect timeout');
+    e.code = 'ETIMEOUT'; // will trigger conError with a 'ECONNRESET'
+    conEnd(e);
   }
   function conError(e){
-    // debug('%s : proxy %s %s CONN ERROR %j', req.ip, req.method, req.url, e);
-    ureq.abort();
-    callback(uerr ? uerr : e);
+    // debug('%s : proxy [%s] %s %s CON ERROR %j', req.ip, color, req.method, req.url, e);
+    conEnd(e);
   }
 
   ureq.on('error', conError);
-  // ureq.setTimeout(connectTimeout, conTimeout);
+  // ureq.setTimeout(CONTIMEOUT, conTimeout); // doesn't work
   ureq.on('socket', function(socket){
-    socket.setTimeout(connectTimeout, conTimeout);
+    socket.once('error', conError);
+    socket.setTimeout(CONTIMEOUT, conTimeout);
   });
-  ureq.end(); // manually call end // req.on('end', ureq.end);
-
-  function timeout(){
-    // debug('%s : proxy %s %s EST TIMEOUT', req.ip, req.method, req.url);
-    res.statusCode = 500;
-    close();
-  }
-  function error(e){
-    // debug('%s : proxy %s %s EST ERROR %j', req.ip, req.method, req.url, e);
-    res.statusCode = 500;
-    close();
-  }
-  function close(){
-    // debug('%s : proxy %s %s EST END', req.ip, req.method, req.url);
-    // debug('%s : proxy %s %s DONE :%s', req.ip, req.method, req.url, server.connections);
-    try { res.end(); } catch(x){ }
-    try { ureq.abort(); } catch(x){ }
-    callback();
-  }
 
   ureq.on('response', function(ures){
-    // debug('%s : proxy %s %s EST BEGIN', req.ip, req.method, req.url);
-    req.on('error', error); // in case of client ends first
+
+    // connect ok, confirm the color
+    gfw.identifyUrl(req.url, (color == 'black') ? 'black' : 'white');
+    if (req.method == 'GET') {
+      ureq.end();
+    } else {
+      req.pipe(ureq);
+      req.resume(); // when connect, resume to pipe to ureq
+    }
+
+    function estEnd(e){
+      // debug('%s : proxy [%s] %s %s DONE :%s', req.ip, color, req.method, req.url, server.connections);
+      if (uerr) return; else uerr = e; // do not process error again
+      try { ureq.abort(); } catch(x){ }
+      try { res.end(); } catch(x){ }
+      if (!e) {
+	debug('%s : proxy [%s] %s %s EST END OK', req.ip, color, req.method, req.url);
+      } else {
+	debug('%s : proxy [%s] %s %s EST END FAIL %j', req.ip, color, req.method, req.url, e);
+      }
+    }
+    function estTimeout(){
+      // debug('%s : proxy [%s] %s %s EST TIMEOUT', req.ip, color, req.method, req.url);
+      var e = new Error('timeout');
+      e.code = 'ETIMEOUT';
+      estEnd(e);
+    }
+    function estError(e){
+      // debug('%s : proxy [%s] %s %s EST ERROR %j', req.ip, color, req.method, req.url, e);
+      estEnd(e);
+    }
+
+    // debug('%s : proxy [%s] %s %s EST BEGIN', req.ip, color, req.method, req.url);
+    req.on('error', estError); // in case of client ends first
     req.pipe(ureq);
-    ureq.removeListener('error', conError); ureq.on('error', error);
-    ureq.setTimeout(transferTimeout, timeout);
-    ureq.on('end', close);
-    ures.on('error', error);
-    ures.on('end', close);
+    ureq.removeListener('error', conError); ureq.on('error', estError);
+    ureq.removeListener('timeout', conTimeout); ureq.on('timeout', estTimeout);
+    ureq.setTimeout(ESTTIMEOUT);
+    ureq.on('end', estEnd);
+    ures.on('error', estError);
+    ures.on('end', estEnd);
     res.statusCode = ures.statusCode;
-    for(var k in ures.headers){ res.setHeader(k,ures.headers[k]); }
+    try {
+      for(var k in ures.headers){ res.setHeader(k,ures.headers[k]); }
+    } catch(x) { }
     ures.pipe(res);
   });
 }
@@ -247,12 +233,14 @@ function start(config){
     debug("listening on %j via %j", this.address(), this.upstream.config);
   };
   var onRequest = function(req, res){
+    var self = this;
     req.ip = req.connection.remoteAddress;
-    proxy(req, res);
+    proxy.call(this, req, res);
   };
   var onConnect = function(req, sock, head){
+    var self = this;
     req.ip = req.connection.remoteAddress;
-    tunnel(req, sock, head);
+    tunnel.call(this, req, sock, head);
   };
   var onClose = function(){
     debug("closed %j", this.address());

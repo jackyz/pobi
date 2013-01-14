@@ -135,30 +135,33 @@ process.on('uncaughtException', function(e){
 // command
 // ** on local as a LOCAL (worker ip: 1.2.3.4)
 
-// npm -g start --app=local --local_worker=shadow://pass@1.2.3.4:5678
-// npm -g start --app=local --local_worker=socks5://1.2.3.4:5678
+// npm -g start --app=local --worker=shadow://pass@1.2.3.4:5678
+// npm -g start --app=local --worker=socks5://1.2.3.4:5678
 
 // ** on remote as a WORKER (self ip: 1.2.3.4)
 
-// npm -g start --app=worker --worker_shadow=shadow://pass@1.2.3.4:5678 --worker_socks5=socks5://1.2.3.4:5678
+// npm -g start --app=worker --shadow=shadow://pass@1.2.3.4:5678 --socks5=socks5://1.2.3.4:5678
 
 if (!module.parent) {
 
-  var ldns = process.env.npm_config_ldns; // || 'udp://192.168.1.1:53';
-  if (!ldns) {
-    console.log('It will really slow, we need your local dns to speed up.');
-    console.log('  example: sudo npm start --ldns=udp://192.168.1.1:53');
-    // process.exit(1);
+  var app = process.env.npm_config_app || 'local';
+  var lodns = process.env.npm_config_lodns; // || 'udp://192.168.1.1:53';
+
+  if ((lodns == undefined) && (app == 'local')) {
+    console.log('It\'s not a bug, but local DNS is needed.');
+    console.log('  example: sudo npm start --lodns=udp://192.168.1.1:53');
+    console.log('Will run in remote DNS only, it\'s very slow.');
+    // console.log('');
+    // process.exit(0);
   }
 
   getLocalIP(function (error, localip) {
     if (error) return console.log('Not Online? error:', error);
-    var app = process.env.npm_config_app || 'local';
     var ip = localip || '127.0.0.1';
     var ctx = {
       local: {
 	ip: ip,
-	ldns: ldns || 'udp://192.168.0.1:53',
+	lodns: lodns || 'udp://8.8.8.8:53',
 	worker: process.env.npm_config_worker || 'shadow://cool@'+ip+':1027'
       },
       worker: {

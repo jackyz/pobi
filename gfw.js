@@ -66,36 +66,37 @@ function identifyUrl(u, v){
   if (!init) throw new Error("NOT_INIT_YET");
   // set
   if (v) {
-    debug('identifyUrl(%s,%s)', u, v);
-    return cache[u] = v;
+    if (cache[u] != v) {
+      debug('identifyUrl(%s,%s)', u, v);
+      cache[u] = v;
+      return;
+    }
   }
   // get :: use cache to speed up
   var r = cache[u];
   if (!r) {
+    /*
     var d = url.parse(u).hostname;
-    // debug("%j : %j", d, u);
     if ('http://'+d == u) {
-      // we are checking domain
+      // we are arctually checking domain
       // check domain againset domain white list
-      // var v1 = white.FindProxyForURL(u, d);
-      // r = (v1 == 'DIRECT') ? 'white' : 'gray';
-      r = 'gray';
+      var v1 = white.FindProxyForURL(u, d);
+      r = (v1 == 'DIRECT') ? 'white' : 'gray';
     } else {
       // we are checking url
       r = identifyDomain(d); // check domain first
-      if (r == 'gray') {
+      if (r != 'black') {
 	// if domain is black, then all url is black
-	// if domain is white, then all url is white
-	// if domain is gray, then need check url againset gfwlist
-	// var v2 = black.FindProxyForURL(u, d);
-	// r = (v2 == 'DIRECT') ? 'gray' : 'black';
-	r = 'gray';
+	// if domain is white or gray, then check url againset gfwlist
+	var v2 = black.FindProxyForURL(u, d);
+	r = (v2 == 'DIRECT') ? 'gray' : 'black';
       }
     }
-    // r = 'gray'; short cut
+    */
+    r = 'gray'; // short cut
     cache[u] = r;
   }
-  debug('identifyUrl(%s):%s', u, r);
+  // debug('identifyUrl(%s):%s', u, r);
   return r;
 }
 exports.identifyUrl = identifyUrl;
