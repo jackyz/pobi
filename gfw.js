@@ -75,7 +75,6 @@ function identifyUrl(u, v){
   // get :: use cache to speed up
   var r = cache[u];
   if (!r) {
-    /*
     var d = url.parse(u).hostname;
     if ('http://'+d == u) {
       // we are arctually checking domain
@@ -92,8 +91,9 @@ function identifyUrl(u, v){
 	r = (v2 == 'DIRECT') ? 'gray' : 'black';
       }
     }
+    /*
+    r = 'gray'; // short cut for test
     */
-    r = 'gray'; // short cut
     cache[u] = r;
   }
   // debug('identifyUrl(%s):%s', u, r);

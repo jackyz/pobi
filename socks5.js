@@ -7,42 +7,68 @@ var url = require('url')
 
 // ---- timeout
 
-var CONTIMEOUT = 3000; // 3 second
-var ESTTIMEOUT = 5000; // 5 second
+var CONTIMEOUT = 2000; // 2 second
+var ESTTIMEOUT = 4000; // 4 second
 
 // ----
 
 function serve(sock){
+
+  // debug("connections:%s", self.connections);
+
   var self = this;
-  debug("connections:%s", self.connections);
+  var uhost = null;
+  var uport = null;
   var usock = null;
-  var buff = [];
-  function close(){
-    // debug('%s END', sock.remoteAddress);
-    debug("connections:%s", self.connections);
-    try { sock.destroy(); } catch(x){ }
+  var uest = false;
+  var uend = null;
+  var stage = 0;
+  var ubuff = [];
+
+  function endup(e){
+    if (uend) return; else uend = e || true; // do not process error again
     try { usock.destroy(); } catch(x){ }
-  }
-  function error(e){
-    debug('%s ERROR %j', sock.remoteAddress, e);
-    close();
+    // TODO retry other link
+    if (uest) { try { sock.destroy(); } catch(x){ } }
+    var us = uest ? 'EST' : 'CON';
+    if (!e) {
+      // debug("%s -> %s:%s %s END OK",sock.remoteAddress, uhost, uport, us);
+    } else {
+      debug("%s -> %s:%s %s END FAIL %j", sock.remoteAddress, uhost, uport, us, e.code);
+    }
   }
   function timeout(){
-    debug('%s TIMEOUT', sock.remoteAddress);
-    close();
+    var e = new Error();
+    e.code = 'ETIMEOUT';
+    endup(e);
   }
+
+  function onData(d){
+    if (stage == 0){
+      handshake(d);
+    } else if (stage == 1) {
+      command(d);
+    } else if (stage == 2) {
+      await(d);
+    } else if (stage == 3) {
+      // connected , noop
+    } else {
+      var e = new Error('unknow stat');
+      e.code = 'UNKNOWN_USTAT';
+      debug(e);
+    }
+  }
+
   function handshake(d){
     // debug('%s HANDSHAKE', sock.remoteAddress);
-    sock.removeListener('data', handshake);
-    sock.on('data', command);
+    stage = 1; // next stage is command
     // todo check v5
     // todo auth
     sock.write(new Buffer([0x05, 0x00])); // socks5 noauth
   }
+
   function command(d){
     // debug('%s COMMAND', sock.remoteAddress);
-    sock.removeListener('data', command);
-    sock.on('data', await);
     // todo check v5
     var cmd = d[1];
     if (cmd == 0x01) { // connect
@@ -51,32 +77,49 @@ function serve(sock){
     //} else if (cmd == 0x03) { // udp associate
     } else { // unsupport
       sock.end(new Buffer([0x05,0x07,0x00,0x01]));
-      error('UNSUPPORT_CMD');
+      var e = new Error('UNSUPPORT_CMD');
+      e.code = 'EUNKNOWN_CMD';
+      endup(e);
     }
   }
+
   function await(d){
     // debug('%s AWAIT', sock.remoteAddress);
-    buff.push(d);
+    ubuff.push(d);
   }
+
   function connect(d){
-    // debug('%s CONNECT', sock.remoteAddress);
+    stage = 2; // next stage is await
+
     var address = socks5.decodeAddress(d,3);
-    if(address.length < d.length) buff.push(d.slice(address.length));
-    // debug("%s con %s:%s", sock.remoteAddress, address.host, address.port)
-    usock = self.upstream.createConnection(address.port, address.host);
+    uhost = address.host;
+    uport = address.port;
+    if(address.length < d.length) ubuff.push(d.slice(address.length));
+
+    // debug("%s -> %s:%s CON ING", sock.remoteAddress, uhost, uport)
+
+    usock = self.upstream.createConnection(uport, uhost);
+    usock.on('error', endup);
+    usock.on('end', endup);
     usock.setTimeout(CONTIMEOUT, timeout);
-    usock.on('error', error);
-    usock.on('end', close);
+
     usock.on('connect', function(){
-      // debug('%s CONNECTED', sock.remoteAddress);
-      debug("%s -> %s:%s", sock.remoteAddress, address.host, address.port)
+      uest = true; // est
+
+      // debug("%s -> %s:%s EST BEGIN", sock.remoteAddress, uhost, uport);
+
       usock.setTimeout(ESTTIMEOUT, timeout);
       usock.setNoDelay(true);
-      while(buff.length) usock.write(buff.shift());
-      sock.removeListener('data', await);
+
+      // flush the buff if any
+      while(ubuff.length){
+	var da = ubuff.shift();
+	var r = usock.write(da);
+        // debug('-> %s %s', da.toString('utf8'), r);
+      }
+
+      stage = 3; // next stage is noop
       sock.pipe(usock);
-      // sock.setTimeout(ESTTIMEOUT, timeout);
-      sock.setNoDelay(true);
       var resp = new Buffer(d.length);
       d.copy(resp);
       resp[0] = 0x05;
@@ -86,11 +129,12 @@ function serve(sock){
       usock.pipe(sock);
     });
   }
+
+  sock.on('data', onData);
+  sock.on('error', endup);
+  sock.on('end', endup);
   sock.setTimeout(ESTTIMEOUT, timeout);
-  // sock.setNoDelay(true);
-  sock.on('error', error);
-  sock.on('data', handshake);
-  sock.on('end', close);
+  sock.setNoDelay(true);
 }
 
 // ----

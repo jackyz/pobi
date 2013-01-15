@@ -167,6 +167,7 @@ ShadowSocks.prototype.setEncoding = function(encoding) {
 };
 
 ShadowSocks.prototype.write = function(data, arg1, arg2) {
+  // debug("WRITE %s", data.toString('hex'));
   var en = encode(this._pass, data);
   return this.socket.write(en, arg1, arg2);
 };

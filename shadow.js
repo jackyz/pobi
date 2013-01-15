@@ -7,84 +7,140 @@ var url = require('url')
 
 // ---- timeout
 
-var connectTimeout = 2000; // 2 second
-var transferTimeout = 30000; // 30 second
+var CONTIMEOUT = 2000; // 2 second
+var ESTTIMEOUT = 4000; // 4 second
 
 // ----
 
 function serve(sock){
+
+  // debug("connections:%s", self.connections);
+
   var self = this;
-  debug("connections:%s", self.connections);
-  var usock = null;
-  var buff = [];
-  function close(){
-    // debug('%s END', sock.remoteAddress);
-    debug("connections:%s", self.connections);
-    try { sock.destroy(); } catch(x){ }
+  var uhost = null; // up host
+  var uport = null; // up port
+  var usock = null; // up sock
+  var uest = false;
+  var uend = null;  // end
+  var ubuff = [];   // buff
+  var stage = 0;    // stage
+
+  function endup(e){
+    if (uend) return; else uend = e || true; // do not process error again
     try { usock.destroy(); } catch(x){ }
-  }
-  function error(e){
-    debug('%s ERROR %j', sock.remoteAddress, e);
-    close();
+    // TODO retry other link
+    if (uest) { try { sock.destroy(); } catch(x){ } }
+    var us = uest ? 'EST' : 'CON';
+    if (!e) {
+      // debug("%s -> %s:%s %s END OK", sock.remoteAddress, uhost, uport, us);
+    } else {
+      debug("%s -> %s:%s %s END FAIL %j", sock.remoteAddress, uhost, uport, us, e.code);
+    }
   }
   function timeout(){
-    debug('%s TIMEOUT', sock.remoteAddress);
-    close();
+    var e = new Error('timeout');
+    e.code = 'ETIMEOUT';
+    endup(e);
   }
-  function command(d){
-    // debug('%s COMMAND', sock.remoteAddress);
-    sock.removeListener('data', command);
-    sock.on('data', await);
-    connect(d);
+
+  function onData(d){
+    if (stage == 0){
+      connect(d);
+    } else if (stage == 1) {
+      wait(d);
+    } else if (stage == 2) {
+      // connected , noop
+    } else {
+      var e = new Error('unknow stat');
+      e.code = 'UNKNOWN_USTAT';
+      debug(e);
+    }
   }
-  function await(en){
-    // debug('%s AWAIT', sock.remoteAddress);
-    var d = shadow.decode(self.pass, en);
-    buff.push(d);
-  }
+
   function connect(en){
-    // debug('%s CONNECT', sock.remoteAddress);
+    stage = 1; // next stage is wait
+
     var d = shadow.decode(self.pass, en);
+    // debug("READ %s", d.toString('hex'));
     var address = shadow.decodeAddress(d,0);
-    // debug('address:%j', address);
-    if(address.length < d.length) buff.push(d.slice(address.length));
-    // debug("connect %s:%s", address.host, address.port)
-    usock = self.upstream.createConnection(address.port, address.host);
-    usock.setTimeout(connectTimeout, timeout);
-    usock.on('error', error);
-    usock.on('end', close);
+    uhost = address.host;
+    uport = address.port;
+    if(address.length < d.length) ubuff.push(d.slice(address.length));
+
+    // debug("%s -> %s:%s CON ING", sock.remoteAddress, uhost, uport);
+
+    // sock.pause(); // hold data first, due not connected
+
+    usock = self.upstream.createConnection(uport, uhost);
+    usock.on('error', endup);
+    usock.on('end', endup);
+    usock.on('timeout', timeout);
+    usock.setTimeout(CONTIMEOUT);
+
     usock.on('connect', function(){
-      // debug('%s CONNECTED', sock.remoteAddress);
-      // debug("%s -> %s:%s", sock.remoteAddress, address.host, address.port)
-      usock.setTimeout(transferTimeout, timeout);
+      uest = true; // est
+
+      // debug("%s -> %s:%s EST BEGIN", sock.remoteAddress, uhost, uport);
+
+      usock.setTimeout(ESTTIMEOUT);
       usock.setNoDelay(true);
-      while(buff.length) { usock.write(buff.shift()); }
-      sock.removeListener('data', await);
-      // sock.pipe(usock);
+
+      // flush the buff if any
+      while(ubuff.length){
+	var d = ubuff.shift();
+	var r = usock.write(d);
+        // debug('-> %s %s', d.toString('utf8'), r);
+      }
+
+      stage = 2; // next stage is noop
+      // sock.resume();
+      // ** sock.pipe(usock);
       sock.on('data', function(en){
         var d = shadow.decode(self.pass, en);
-        // debug('->', d.toString('utf8'));
-        if(!usock.write(d)) sock.pause();
+	var r = usock.write(d);
+        if (!r) usock.pause();
+        // debug('-> %s %s', d.toString('utf8'), r);
       });
       sock.on('end', function(){ usock.end(); });
       sock.on('drain', function(){ usock.resume(); });
-      // sock.setTimeout(transferTimeout, timeout);
-      sock.setNoDelay(true);
-      // usock.pipe(sock);
+
+      // ** usock.pipe(sock);
       usock.on('data', function(d){
-        // debug('<-', d.toString('utf8'));
         var en = shadow.encode(self.pass, d);
-        if(!sock.write(en)) usock.pause();
+	var r = sock.write(en);
+        if(!r) usock.pause();
+	// debug('<- %s %s', d.toString('utf8'), r);
       });
       usock.on('end', function(){ sock.end(); });
       usock.on('drain', function(){ sock.resume(); });
+      /*
+      usock.on('drain', function(){
+	sock.resume();
+	var d = ubuff.shift();
+	if (!d) {
+	  sock.resume();
+	} else {
+	  debug('-> %s', d.toString('utf8'));
+	  if (!usock.write(d)) sock.pause();
+	}
+      });
+      usock.emit('drain');
+       */
     });
   }
-  sock.setTimeout(transferTimeout, timeout);
-  // sock.setNoDelay(true);
-  sock.on('error', error);
-  sock.on('data', command);
-  sock.on('end', close);
+
+  function wait(en){
+    // debug('%s WAIT CON', sock.remoteAddress);
+    var d = shadow.decode(self.pass, en);
+    // debug("READ %s", d.toString('hex'));
+    ubuff.push(d);
+  }
+
+  sock.on('data', onData);
+  sock.on('error', endup);
+  sock.on('end', endup);
+  sock.setTimeout(ESTTIMEOUT, timeout);
+  sock.setNoDelay(true);
 }
 
 // ----
