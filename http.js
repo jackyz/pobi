@@ -192,7 +192,9 @@ var server = null;
 
 function start(config){
   var onListening = function(){
-    debug("listening on %j via %j", this.address(), this.upstream.config);
+    debug("listening on %s:%s",
+      this.address().address, this.address().port);
+    debug("  --upstream=%j", this.upstream.config);
   };
   var onRequest = function(req, res){
     var self = this;

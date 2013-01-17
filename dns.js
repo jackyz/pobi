@@ -91,7 +91,14 @@ var udpServer = null;
 function start(config){
 
   var onListening = function(){
-    debug("listening on %j", this.address());
+    debug("listening on %s:%s",
+      this.address().address, this.address().port);
+    debug("  --lodns=%s://%s:%s",
+      this.direct.type, this.direct.address, this.direct.port);
+    debug("  --upstream=%s://%s:%s",
+      this.upstream.type, this.upstream.address, this.upstream.port);
+    debug("  --wpad=%s",
+      this.wpad);
   };
   var onRequest = function(req, res){
     var self = this;

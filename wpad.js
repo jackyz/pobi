@@ -30,7 +30,8 @@ var server = null;
 
 function start(config){
   var onListening = function(){
-    debug("listening on %j", this.address());
+    debug("listening on %s:%s",
+      this.address().address, this.address().port);
   };
   var onRequest = function(req, res){
     req.ip = req.connection.remoteAddress;

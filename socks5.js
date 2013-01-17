@@ -143,7 +143,9 @@ var server = null;
 
 function start(config){
   var onListening = function(){
-    debug("listening on %j via %j", this.address(), this.upstream.config);
+    debug("listening on %s:%s",
+      this.address().address, this.address().port);
+    debug("  --upstream=%s", this.upstream.config);
   };
   var onConnection = function(sock){
     // debug("%s connect", sock.remoteAddress);
