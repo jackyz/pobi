@@ -1,7 +1,6 @@
 {
   "local": {
     "gfw": {
-      "proxy": "PROXY <%=local.ip%>:8080"
     },
     "dns": {
       "listen": "udp://0.0.0.0:53",
@@ -10,6 +9,7 @@
       "upstream": "tcp://8.8.8.8:53"
     },
     "wpad": {
+      "proxy": "PROXY <%=local.ip%>:8080",
       "listen": "http://0.0.0.0:80"
      },
     "http": {

@@ -1,10 +1,18 @@
-var url = require('url')
+var fs = require('fs')
+  , path = require('path')
+  , url = require('url')
   , http = require('http')
   , d = require('domain').create()
-  , debug = require('./debug')('WPAD')
-  , getPac = require('./gfw').getPac;
+  , server = require('./server')
+  , debug = require('./debug')('WPAD');
+
+// ----
+
+var pacTmpl = '/tmpl/pac.tmpl'; // all-by-proxy pac template
 
 var wpad_path = '/wpad.da';
+
+// ----
 
 function serveWpad(req, res, cb){
   var self = this;
@@ -13,7 +21,7 @@ function serveWpad(req, res, cb){
       'Content-Type': 'application/x-ns-proxy-autoconfig; charset=UTF-8',
       'Cache-Control': 'no-cache'
     });
-    res.write(getPac());
+    res.write(self.pac);
     res.end();
     debug('%s : %s %s ok', req.ip, req.method, req.url);
     cb();
@@ -26,7 +34,7 @@ function serveWpad(req, res, cb){
 
 // ----
 
-var server = null;
+var wpad = null;
 
 function start(config){
   var onListening = function(){
@@ -47,11 +55,16 @@ function start(config){
   };
 
   // init
-  server = http.createServer();
-  server.on('listening', onListening);
-  server.on('request', onRequest);
-  server.on('close', onClose);
-  server.on('error', onError);
+  var proxy = config.proxy || "DIRECT";
+  var pac = server.tmpl(fs.readFileSync(path.dirname(__filename)+pacTmpl, 'utf8'), {proxy:proxy});
+
+  wpad = http.createServer();
+  wpad.on('listening', onListening);
+  wpad.on('request', onRequest);
+  wpad.on('close', onClose);
+  wpad.on('error', onError);
+
+  wpad.pac = pac;
 
   var o = url.parse(config.listen);
   var host = o.hostname || '0.0.0.0';
@@ -62,12 +75,12 @@ function start(config){
     debug('!!!! ERROR %s', e.message);
   });
   d.run(function(){
-    server.listen(port, host);
+    wpad.listen(port, host);
   });
 }
 exports.start = start;
 
 function stop(){
-  server.close();
+  wpad.close();
 }
 exports.stop = stop;
