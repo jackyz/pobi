@@ -16,7 +16,7 @@ function getLocalIP(callback) {
   });
 }
 
-var template = "/server.tmpl";
+var template = "/tmpl/server.tmpl";
 
 function getConfig(ctx, callback) {
   try {
@@ -135,12 +135,12 @@ process.on('uncaughtException', function(e){
 // command
 // ** on local as a LOCAL (worker ip: 1.2.3.4)
 
-// npm -g start --app=local --worker=shadow://pass@1.2.3.4:5678
-// npm -g start --app=local --worker=socks5://1.2.3.4:5678
+// npm -g start --app=local --lodns=udp://192.168.1.1:53 --worker=shadow://pass@1.2.3.4:5678
+// npm -g start --app=local --lodns=udp://192.168.1.1:53 --worker=socks5://1.2.3.4:5678
 
 // ** on remote as a WORKER (self ip: 1.2.3.4)
 
-// npm -g start --app=worker --shadow=shadow://pass@1.2.3.4:5678 --socks5=socks5://1.2.3.4:5678
+// npm -g start --app=worker --shadow=shadow://pass@0.0.0.0:5678 --socks5=socks5://0.0.0.0:7890
 
 if (!module.parent) {
 

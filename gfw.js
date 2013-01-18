@@ -7,10 +7,10 @@ var fs = require('fs')
 
 // ----
 
-var pacTmpl = '/pac.tmpl'; // all-by-proxy pac template
+var pacTmpl = '/tmpl/pac.tmpl'; // all-by-proxy pac template
 
-var whiteList = '/pac.whitelist';
-var blackList = '/pac.blacklist';
+var whiteList = '/list/pac.whitelist';
+var blackList = '/list/pac.blacklist';
 
 // ---- implements
 
