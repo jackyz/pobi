@@ -4,6 +4,23 @@ var fs = require('fs')
   , url = require('url')
   , debug = require('./debug')('GFW');
 
+/*
+color:
+   white : direct works | i don't know
+   black : direct fail, retry upstream works
+   fail  : direct fail, retry upstream fail
+
+identifyDomain(dn) : color
+identifyDomain(dn, color) : void
+
+identifyIp(ip) : color
+identifyIp(ip, color) : void
+
+identifyUrl(url) : color
+identifyUrl(url, color) : void
+
+*/
+
 // ----
 
 var hosts = '/list/hosts.whitelist';
@@ -15,47 +32,18 @@ var blackList = '/list/pac.blacklist';
 var init = false;
 var black = null;
 var white = null;
-var cache = {};
-
-/*
-
-domain : the domain name
-color : white | gray | black | fail :: the color
-ip : string | null :: ip address
-url : string | null :: the url string
-error : ECONNRESET | ETIMEOUT | null
-established : true | false | null
-
-DNS:  gfw.isDomainBlocked(domain) : true | false
-HTTP: gfw.isDomainBlocked(domain) : true | false
-HTTP: gfw.reportDomainBlock(domain) : void
-HTTP: gfw.isUrlBlocked(url) : true | false
-HTTP: gfw.reportUrlBlock(url) : void
-
-
-DNS:  gfw.identifyDomain(domain, function next(color,ip){ });
-DNS:  gfw.feedbackDomain(domain,color,ips,ttl, function next(){ });
-HTTP: gfw.identifyUrl(url, function next(color,ip){ });
-HTTP: gfw.feedbackUrl(color,ip,url,error,established, function next(){ });
-
-IP Domain1,Domain2
-
-+-------- DNS -------+---- HTTP ----+
-| Domain | IPS | TTL | D | U | URLS |
-+-----------------------------------+
-
-+---- Blocked Ip ----+
-| IP           | TTL |
-+--------------------+
-
-*/
+var cache_d = {};
+var cache_i = {};
+var cache_u = {};
 
 function start(config){
   black = vm.createContext({});
   vm.runInContext(fs.readFileSync(path.dirname(__filename)+blackList, 'utf8'), black, 'blacklist');
   white = vm.createContext({});
   vm.runInContext(fs.readFileSync(path.dirname(__filename)+blackList, 'utf8'), white, 'whitelist');
-  cache = {};
+  cache_d = {};
+  cache_i = {};
+  cache_u = {};
   init = true;
   debug("started");
 }
@@ -63,7 +51,9 @@ exports.start = start;
 
 function stop(){
   init = false;
-  cache = {};
+  cache_d = {};
+  cache_i = {};
+  cache_u = {};
   black = null;
   white = null;
   debug("stoped");
@@ -71,46 +61,101 @@ function stop(){
 exports.stop = stop;
 
 function identifyDomain(d, v){
-  return identifyUrl('http://'+d, v);
+  if (!init) throw new Error("NOT_INIT_YET");
+  if (v) { // set
+    var v0 = cache_d[d];
+    cache_d[d] = v;
+    if (v0 != v) debug('identifyDomain(%s,%s)', d, v);
+    return;
+  } else if (d) { // get
+    var v = cache_d[d];
+    if (!v) {
+      v = checkDomain(d);
+      cache_d[d] = v;
+    }
+    debug('identifyDomain(%s):%s', d, v);
+    return v;
+  } else { // list
+    return list(cache_d);
+  }
 }
 exports.identifyDomain = identifyDomain;
 
-function identifyUrl(u, v){
-  // check url against white and black list
+function identifyIp(i, v){
   if (!init) throw new Error("NOT_INIT_YET");
-  // set
-  if (v) {
-    if (cache[u] != v) {
-      debug('identifyUrl(%s,%s)', u, v);
-      cache[u] = v;
-      return;
+  if (v) { // set
+    var v0 = cache_i[i];
+    cache_i[i] = v;
+    if (v0 != v) debug('identifyIp(%s,%s)', i, v);
+    return;
+  } else if (i) { // get
+    var v = cache_i[i];
+    if (!v) {
+      v = checkIp(i);
+      cache_i[i] = v;
     }
+    debug('identifyIp(%s):%s', i, v);
+    return v;
+  } else { // list
+    return list(cache_i);
   }
-  // get :: use cache to speed up
-  var r = cache[u];
-  if (!r) {
-    var d = url.parse(u).hostname;
-    if ('http://'+d == u) {
-      // we are arctually checking domain
-      // check domain againset domain white list
-      var v1 = white.FindProxyForURL(u, d);
-      r = (v1 == 'DIRECT') ? 'white' : 'gray';
-    } else {
-      // we are checking url
-      r = identifyDomain(d); // check domain first
-      if (r != 'black') {
-	// if domain is black, then all url is black
-	// if domain is white or gray, then check url againset gfwlist
-	var v2 = black.FindProxyForURL(u, d);
-	r = (v2 == 'DIRECT') ? 'gray' : 'black';
-      }
+}
+exports.identifyIp = identifyIp;
+
+function identifyUrl(u, v){
+  if (!init) throw new Error("NOT_INIT_YET");
+  if (v) { // set
+    var v0 = cache_u[u];
+    cache_u[u] = v;
+    if (v0 = v) debug('identifyUrl(%s,%s)', u, v);
+    return;
+  } else if (u) { // get
+    var v = cache_u[u];
+    if (!v) {
+      v = checkUrl(u);
+      cache_u[u] = v;
     }
-    /*
-    r = 'gray'; // short cut for test
-    */
-    cache[u] = r;
+    debug('identifyUrl(%s):%s', u, v);
+    return v;
+  } else { // list
+    return list(cache_u);
   }
-  // debug('identifyUrl(%s):%s', u, r);
-  return r;
 }
 exports.identifyUrl = identifyUrl;
+
+function checkDomain(d){
+/*
+  var r = null;
+  var u = 'http://'+d;
+  var v1 = white.FindProxyForURL(u, d);
+  r = (v1 == 'DIRECT') ? 'white' : null;
+  if (r) return r;
+  var v2 = black.FindProxyForURL(u, d);
+  r = (v2 != 'DIRECT') ? 'black' : null;
+  if (r) return r;
+*/
+  return 'gray';
+}
+
+function checkIp(i){
+  return 'gray';
+}
+
+function checkUrl(u){
+/*
+  var r = null;
+  var d = url.parse(u).hostname;
+  var v2 = black.FindProxyForURL(u, d);
+  r = (v2 != 'DIRECT') ? 'black' : null;
+  if (r) return r;
+*/
+  return 'gray';
+}
+
+function list(list){
+  var s = '';
+  for (var i in list){
+    s += list[i] + '\t' + i + '\n';
+  }
+  return s;
+}

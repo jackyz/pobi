@@ -1,6 +1,5 @@
 var url = require('url')
   , net = require('net')
-  , d = require('domain').create()
   , debug = require('./debug')('SOCKS5')
   , proto = require('./proto')
   , socks5 = require('./proto/socks5');
@@ -170,14 +169,8 @@ function start(config){
   var o = url.parse(config.listen);
   var host = o.hostname || '0.0.0.0';
   var port = o.port || 7070;
-
-  d.on('error', function(e){
-    // debug('ERROR', e, e.stack);
-    debug('!!!! ERROR %s', e.message);
-  });
-  d.run(function(){
-    server.listen(port, host);
-  });
+  //
+  server.listen(port, host);
 }
 exports.start = start;
 

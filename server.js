@@ -1,6 +1,7 @@
 var fs = require('fs')
   , path = require('path')
   , net = require('net')
+  , d = require('domain').create()
   , debug = require('./debug')('APP')
 
 // ----
@@ -9,7 +10,7 @@ function getLocalIP(callback) {
   var socket = net.createConnection(53, '8.8.8.8');
   socket.on('connect', function() {
     callback(undefined, socket.address().address);
-    socket.end();
+    socket.destroy();
   });
   socket.on('error', function(e) {
     callback(e, 'error');
@@ -135,12 +136,16 @@ process.on('uncaughtException', function(e){
 // command
 // ** on local as a LOCAL (worker ip: 1.2.3.4)
 
-// npm -g start --app=local --lodns=udp://192.168.1.1:53 --worker=shadow://pass@1.2.3.4:5678
-// npm -g start --app=local --lodns=udp://192.168.1.1:53 --worker=socks5://1.2.3.4:5678
+// start local app for shadowsocks / socks5 / vpn
+// npm -g start --lodns=udp://192.168.1.1:53 --worker=shadow://pas@1.2.3.4:5678
+// npm -g start --lodns=udp://192.168.1.1:53 --worker=socks5://192.168.1.3:7070
+// npm -g start --lodns=udp://192.168.1.1:53 --worker=vpn://192.168.5.1
 
 // ** on remote as a WORKER (self ip: 1.2.3.4)
 
-// npm -g start --app=worker --shadow=shadow://pass@0.0.0.0:5678 --socks5=socks5://0.0.0.0:7890
+// npm -g start --app=worker --shadow=shadow://pass@0.0.0.0:5678
+// npm -g start --app=worker --socks5=socks5://0.0.0.0:7890
+// npm -g start --app=worker --vpn=vpn://192.168.5.2
 
 if (!module.parent) {
 
@@ -188,14 +193,21 @@ if (!module.parent) {
 	return val;
       }
 
-      // start them one by one
-
       var cfg = config(app);
-      for(var mod in cfg){
-	var conf = cfg[mod];
-	// debug("start %s:%s %j", app, mod, conf);
-	require('./'+mod).start(conf);
-      }
+
+      // start them one by one
+      d.on('error', function(e){
+	// debug('ERROR', e, e.stack);
+	debug('!!!! ERROR %s', e.message);
+      });
+      d.run(function(){
+	for(var mod in cfg){
+	  var conf = cfg[mod];
+	  // debug("start %s:%s %j", app, mod, conf);
+	  require('./'+mod).start(conf);
+	}
+      });
+
     });
   });
 }

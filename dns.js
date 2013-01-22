@@ -1,6 +1,5 @@
 var url = require('url')
   , ndns = require('native-dns')
-  , d = require('domain').create()
   , gfw = require('./gfw')
   , debug = require('./debug')('DNS');
 
@@ -22,15 +21,69 @@ function serve_wpad(req, res){
   debug("%s: Query [WPAD] %j -> %j", req.ip, dn, [self.wpad]);
 }
 
+// if not name resolve, use lodns direct
+function proxy_query(req, res){
+  var self = this;
+  var q = req.question[0];
+  var dn = q.name;
+  var color = 'white';
+  _query.call(self, color, req, function(e,r){
+    if (e){
+      debug("%s: Query [%s] %j FAIL %s", req.ip, color, dn, e.code);
+    } else {
+      res.answer = r;
+    }
+    res.send();
+  });
+}
+
 function serve_query(req, res){
   var self = this;
   var q = req.question[0];
   var dn = q.name;
   var color = (q.type==1 && q.class==1) ? gfw.identifyDomain(dn) : 'white';
-  _query.call(self, color, req, res);
+  _serve_query.call(self, color, req, res);
 }
 
-function _query(color, req, res){
+function _serve_query(color, req, res){
+  var self = this;
+  var q = req.question[0];
+  var dn = q.name;
+  _query.call(self, color, req, function(e,r){
+    if (e) {
+      if ((color == 'gray' || color == 'white')  && e.code == 'ETIMEOUT') {
+	debug("%s: Query [%s] %j TIMEOUT RETRY", req.ip, color, dn);
+	req.retry++;
+	_serve_query.call(self, 'black', req, res);
+      } else {
+	gfw.identifyDomain(dn, 'fail');
+	debug("%s: Query [%s] %j FAIL %s", req.ip, color, dn, e.code);
+	res.send();
+      }
+    } else {
+      var r2 = filterFails(r);
+      if (r2.length){
+	debug("%s: Query [%s] %j OK", req.ip, color, dn);
+	// retry connect ok, confirm the color
+	gfw.identifyDomain(dn, (color != 'black') ? 'white' : 'black');
+	res.answer = r;
+	res.send();
+      } else if ((color == 'gray' || color == 'white')) {
+	// try black
+	debug("%s: Query [%s] %j GFWED RETRY", req.ip, color, dn);
+	req.retry++;
+	_serve_query.call(self, 'black', req, res);
+      } else {
+	gfw.identifyDomain(dn, 'fail');
+	debug("%s: Query [%s] %j GFWED FAIL", req.ip, color, dn);
+	res.send();
+      }
+    }
+  });
+}
+
+function _query(color, req, callback){
+  if (color == 'fail') return callback(null, []);
   var self = this;
   var q = req.question[0];
   var dn = q.name;
@@ -45,17 +98,9 @@ function _query(color, req, res){
   function qEnd(e){
     if (uerr) return; else uerr = e; // do not process error again
     if(!e) {
-      debug("%s: Query [%s] %j OK", req.ip, color, dn);
-      // console.dir(r);
-      res.answer = result;
-      res.send();
-    } else if (color == 'gray' && e.code == 'ETIMEOUT'){
-      debug("%s: Query [%s] %j TIMEOUT RETRY", req.ip, color, dn);
-      _query.call(self, 'black', req, res);
+      callback(null, result);
     } else {
-      // res.header.rcode = ndns.consts.NAME_TO_RCODE.NOTFOUND;
-      // empty response
-      res.send();
+      callback(e, result);
     }
   }
   ureq.on('timeout', function(){
@@ -66,10 +111,6 @@ function _query(color, req, res){
   ureq.on('error', function(e){
     qEnd(e);
   });
-  ureq.on('message', function(){
-    // connect ok, confirm the color
-    gfw.identifyDomain(dn, (color == 'black') ? 'black' : 'white');
-  });
   ureq.on('message', function (e, r) {
     r.answer.forEach(function (a) { result.push(a); });
   });
@@ -77,6 +118,40 @@ function _query(color, req, res){
     qEnd();
   });
   ureq.send();
+}
+
+function filterFails(answers){
+  var r2 = [];
+  for (var i=0; i<answers.length; i++){
+    var answer = answers[i];
+    answer.color = gfw.identifyIp(answer.address);
+  }
+  // white is best
+  for (var i=0; i<answers.length; i++){
+    var answer = answers[i];
+    if (answer.color == 'white') {
+      r2.push(answer);
+    }
+  }
+  if (r2.length) return r2;
+  // gray will be ok
+  for (var i=0; i<answers.length; i++){
+    var answer = answers[i];
+    if (answer.color == 'gray') {
+      r2.push(answer);
+    }
+  }
+  if (r2.length) return r2;
+  // black is fallback
+  for (var i=0; i<answers.length; i++){
+    var answer = answers[i];
+    if (answer.color == 'black') {
+      r2.push(answer);
+    }
+  }
+  if (r2.length) return r2;
+  // fail should be filter out
+  return r2;
 }
 
 function startsWith(str, prefix){
@@ -103,12 +178,20 @@ function start(config){
   var onRequest = function(req, res){
     var self = this;
     req.ip = req._socket._remote.address;
+    req.retry = 0;
     var q = req.question[0];
     var dn = q.name;
-    if(q.type == 1 && q.class == 1 && startsWith(dn,wpad_domain)) {
-      serve_wpad.call(self, req, res);
+    if(q.type == 1 && q.class == 1){
+      if(startsWith(dn,wpad_domain)) {
+	// if wpad name resolve
+	serve_wpad.call(self, req, res);
+      } else {
+	// other name resolve
+	serve_query.call(self, req, res);
+      }
     } else {
-      serve_query.call(self, req, res);
+      // not name resolve
+      proxy_query.call(self, req, res);
     }
   };
   var onClose = function(){
@@ -159,14 +242,9 @@ function start(config){
   var host = o.hostname || '0.0.0.0';
   var port = o.port || 53; // dns must on 53
 
-  d.on('error', function(e){
-    // debug('ERROR', e, e.stack);
-    debug('!!!! ERROR %s', e.message);
-  });
-  d.run(function(){
-    udpServer.serve(port, host);
-    // tcpServer.serve(port, host);
-  });
+  udpServer.serve(port, host);
+  // tcpServer.serve(port, host);
+  
 }
 exports.start = start;
 

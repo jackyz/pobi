@@ -92,7 +92,7 @@ SocksClientSocket.prototype.connect = function(port, host) {
   });
   // ----
   self.socket.connect(self.socks_port, self.socks_host, function() {
-    self.socket.removeAllListeners(); // added
+    // self.socket.removeAllListeners(); // added
     self.establish_socks_connection(host, port);
   });
   return self;

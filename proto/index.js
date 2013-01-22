@@ -45,7 +45,9 @@ module.exports = function(config){
     }
     util.inherits(Agent, http.Agent);
     // Agent.prototype.maxSockets = 32;
-    var agent = new Agent({maxSockets:32});
+    // var agent = new Agent({maxSockets:32});
+    var agent = new Agent();
+    agent.maxSockets = 32;
     // ---- exports
     u = {
       config: config,

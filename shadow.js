@@ -1,6 +1,5 @@
 var url = require('url')
   , net = require('net')
-  , d = require('domain').create()
   , debug = require('./debug')('SHADOW')
   , proto = require('./proto')
   , shadow = require('./proto/shadow');
@@ -176,14 +175,7 @@ function start(config){
   var host = o.hostname || '0.0.0.0';
   var port = o.port || 1070;
   //
-
-  d.on('error', function(e){
-    // debug('ERROR', e, e.stack);
-    debug('!!!! ERROR %s', e.message);
-  });
-  d.run(function(){
-    server.listen(port, host);
-  });
+  server.listen(port, host);
 }
 exports.start = start;
 

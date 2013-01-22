@@ -186,7 +186,7 @@ ShadowSocks.prototype.connect = function(port, host) {
   });
   // ----
   self.socket.connect(self._port, self._host, function() {
-    self.socket.removeAllListeners(); // added
+    // self.socket.removeAllListeners(); // added
     self.establish_socks_connection(host, port);
   });
   return self;
