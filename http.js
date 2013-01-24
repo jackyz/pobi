@@ -23,7 +23,7 @@ function resolve(domain, callback){
     var r = {};
     for (var i=0; i<ips.length; i++){
       var ip = ips[i];
-      r[ip] = gfw.identifyIp(ip);
+      r[ip] = gfw.identifyIp(domain, ip);
     }
     for (var ip in r) {
       if (r[ip] == 'white') {
@@ -49,11 +49,11 @@ function resolve(domain, callback){
 // tunnel /// https going this way
 function tunnel(req, sock, head){
   var self = this;
-  var domainColor = (app != 'local') ? 'white' : gfw.identifyDomain(host);
   var host = url.parse('http://'+req.url).hostname;
+  // var domainColor = (app != 'local') ? 'white' : gfw.identifyDomain(host);
   resolve(host, function(e, ip, ipColor){
-    var color = (ipColor == 'black' || domainColor == 'black') ? 'black' : 'white';
-    _tunnel.call(self, ip, color, req, sock, head);
+    // var color = (ipColor == 'white' || domainColor == 'white') ? 'white' : 'black';
+    _tunnel.call(self, ip, ipColor, req, sock, head);
   });
 }
 
@@ -85,12 +85,18 @@ function _tunnel(ip, color, req, sock, head){
       // debug('%s : tunnel [%s] %s %s END OK', req.ip, color, req.url, us);
     } else if (!uest && e.code == 'ETIMEOUT') {
       debug('%s : tunnel [%s] %s %s TIMEOUT RETRY', req.ip, color, req.url, us);
-      gfw.identifyIp(ip, (color == 'black') ? 'fail' : 'black');
-      tunnel.call(self, req, sock, head); // dns error retry with resolve
-      // _tunnel.call(self, ip, 'black', req, sock, head);
+      if (color == 'black') {
+	gfw.identifyIp(o.hostname, ip, 'fail');
+	// retry with redo dns resolve
+	tunnel.call(self, req, sock, head);
+      } else {
+	gfw.identifyIp(o.hostname, ip, 'black');
+	// retry same ip
+	_tunnel.call(self, ip, 'black', req, sock, head);
+      }
     } else {
       debug('%s : tunnel [%s] %s %s FAIL %s', req.ip, color, req.url, us, e.code);
-      if (!uest) gfw.identifyIp(ip, 'fail');
+      if (!uest) gfw.identifyIp(o.hostname, ip, 'fail');
       sock.end('HTTP/1.0 500 Connect fail\r\n\r\n\r\n');
     }
   }
@@ -108,7 +114,7 @@ function _tunnel(ip, color, req, sock, head){
     // debug('%s : tunnel [%s] %s EST BEGIN', req.ip, color, req.url);
 
     // connect ok, confirm the color
-    gfw.identifyIp(ip, (color == 'black') ? 'black' : 'white');
+    gfw.identifyIp(o.hostname, ip, (color == 'black') ? 'black' : 'white');
 
     uest = true; // now connected
 
@@ -134,11 +140,11 @@ function _tunnel(ip, color, req, sock, head){
 function proxy(req, res){
   var self = this;
   req.pause(); // pause data to prevent lost, after connect resume
-  var urlColor = (app != 'local') ? 'white' : gfw.identifyUrl(req.url);
-  var host = url.parse(req.url).host;
+  var host = url.parse(req.url).hostname;
+  // var urlColor = (app != 'local') ? 'white' : gfw.identifyUrl(host, req.url);
   resolve(host, function(e, ip, ipColor){
-    var color = (ipColor == 'black' || urlColor == 'black') ? 'black' : 'white';
-    _proxy.call(self, ip, color, req, res);
+    // var color = (ipColor == 'black' || urlColor == 'black') ? 'black' : 'white';
+    _proxy.call(self, ip, ipColor, req, res);
   });
 }
 
@@ -187,18 +193,25 @@ function _proxy(ip, color, req, res){
     } else if (!uest && color != 'black' && e.code == 'ECONNRESET') {
       // it's a reset url
       debug('%s : proxy [%s] %s %s %s RESET RETRY', req.ip, color, req.method, req.url, us);
-      gfw.identifyIp(ip, 'black');
-      proxy.call(self, req, res);
-      // _proxy.call(self, ip, 'black', req, res);
-    } else if (!uest && color != 'black' && e.code == 'ETIMEOUT') {
+      gfw.identifyIp(o.hostname, ip, 'black');
+      // proxy.call(self, req, res);
+      // retry with same ip
+      _proxy.call(self, ip, 'black', req, res);
+    } else if (!uest && e.code == 'ETIMEOUT') {
       // it's could be blackholed ip
       debug('%s : proxy [%s] %s %s %s TIMEOUT RETRY', req.ip, color, req.method, req.url, us);
-      gfw.identifyIp(ip, 'black');
-      proxy.call(self, req, res); // dns error retry with resolve
-      // _proxy.call(self, ip, 'black', req, res);
+      if (color == 'black') {
+	gfw.identifyIp(o.hostname, ip, 'fail');
+	// retry with redo dns resolve
+	proxy.call(self, req, res);
+      } else {
+	gfw.identifyIp(o.hostname, ip, 'black');
+	// retry with same ip
+	_proxy.call(self, ip, 'black', req, res);
+      }
     } else {
       debug('%s : proxy [%s] %s %s %s FAIL %s',	req.ip, color, req.method, req.url, us, e.code);
-      if (!uest) gfw.identifyIp(ip, 'fail');
+      if (!uest) gfw.identifyIp(o.hostname, ip, 'fail');
       res.statusCode = 500;
       res.end(e.code);
     }
@@ -222,9 +235,9 @@ function _proxy(ip, color, req, res){
     uest = true; // now connected
     // debug('%s : proxy [%s] %s %s EST BEGIN', req.ip, color, req.method, req.url);
     // connect ok, confirm the color
-    gfw.identifyIp(ip, (color == 'black') ? 'black' : 'white');
+    gfw.identifyIp(o.hostname, ip, (color == 'black') ? 'black' : 'white');
     // should be but maybe too much
-    gfw.identifyUrl(req.url, (color == 'black') ? 'black' : 'white');
+    gfw.identifyUrl(o.hostname, req.url, (color == 'black') ? 'black' : 'white');
 
     ureq.setTimeout(ESTTIMEOUT);
     req.pipe(ureq);

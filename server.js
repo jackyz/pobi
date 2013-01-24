@@ -197,8 +197,8 @@ if (!module.parent) {
 
       // start them one by one
       d.on('error', function(e){
-	// debug('ERROR', e, e.stack);
-	debug('!!!! ERROR %s', e.message);
+	debug('!!!! ERROR %s %j', e.message, e.stack);
+	// debug('!!!! ERROR %s', e.message);
       });
       d.run(function(){
 	for(var mod in cfg){

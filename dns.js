@@ -61,7 +61,7 @@ function _serve_query(color, req, res){
 	res.send();
       }
     } else {
-      var r2 = filterFails(r);
+      var r2 = filterFails(dn, r);
       if (r2.length){
 	debug("%s: Query [%s] %j OK", req.ip, color, dn);
 	// retry connect ok, confirm the color
@@ -120,11 +120,11 @@ function _query(color, req, callback){
   ureq.send();
 }
 
-function filterFails(answers){
+function filterFails(domain, answers){
   var r2 = [];
   for (var i=0; i<answers.length; i++){
     var answer = answers[i];
-    answer.color = gfw.identifyIp(answer.address);
+    answer.color = gfw.identifyIp(domain, answer.address);
   }
   // white is best
   for (var i=0; i<answers.length; i++){
@@ -244,7 +244,7 @@ function start(config){
 
   udpServer.serve(port, host);
   // tcpServer.serve(port, host);
-  
+
 }
 exports.start = start;
 

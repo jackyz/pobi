@@ -13,11 +13,11 @@ color:
 identifyDomain(dn) : color
 identifyDomain(dn, color) : void
 
-identifyIp(ip) : color
-identifyIp(ip, color) : void
+identifyIp(dn, ip) : color
+identifyIp(dn, ip, color) : void
 
-identifyUrl(url) : color
-identifyUrl(url, color) : void
+identifyUrl(dn, url) : color
+identifyUrl(dn, url, color) : void
 
 */
 
@@ -32,18 +32,14 @@ var blackList = '/list/pac.blacklist';
 var init = false;
 var black = null;
 var white = null;
-var cache_d = {};
-var cache_i = {};
-var cache_u = {};
+var cache = {};
 
 function start(config){
   black = vm.createContext({});
   vm.runInContext(fs.readFileSync(path.dirname(__filename)+blackList, 'utf8'), black, 'blacklist');
   white = vm.createContext({});
   vm.runInContext(fs.readFileSync(path.dirname(__filename)+blackList, 'utf8'), white, 'whitelist');
-  cache_d = {};
-  cache_i = {};
-  cache_u = {};
+  cache = {};
   init = true;
   debug("started");
 }
@@ -51,9 +47,7 @@ exports.start = start;
 
 function stop(){
   init = false;
-  cache_d = {};
-  cache_i = {};
-  cache_u = {};
+  cache = {};
   black = null;
   white = null;
   debug("stoped");
@@ -63,62 +57,76 @@ exports.stop = stop;
 function identifyDomain(d, v){
   if (!init) throw new Error("NOT_INIT_YET");
   if (v) { // set
-    var v0 = cache_d[d];
-    cache_d[d] = v;
+    var v0 = (cache[d] || {}).dns;
+    if (!cache[d]) cache[d] = {};
+    cache[d].dns = v;
     if (v0 != v) debug('identifyDomain(%s,%s)', d, v);
     return;
-  } else if (d) { // get
-    var v = cache_d[d];
+  } else if (d) { // get domain
+    var v = (cache[d] || {}).dns;
     if (!v) {
       v = checkDomain(d);
-      cache_d[d] = v;
+      if (!cache[d]) cache[d] = {};
+      cache[d].dns = v;
     }
     // debug('identifyDomain(%s):%s', d, v);
     return v;
-  } else { // list
-    return list(cache_d);
+  } else { // list all
+    return listAll(cache);
   }
 }
 exports.identifyDomain = identifyDomain;
 
-function identifyIp(i, v){
+function identifyIp(d, i, v){
   if (!init) throw new Error("NOT_INIT_YET");
   if (v) { // set
-    var v0 = cache_i[i];
-    cache_i[i] = v;
-    if (v0 != v) debug('identifyIp(%s,%s)', i, v);
+    var v0 = ((cache[d] || {}).ips || {})[i];
+    if (!cache[d]) cache[d] = {};
+    if (!cache[d].ips) cache[d].ips = {};
+    cache[d].ips[i] = v;
+    if (v0 != v) debug('identifyIp(%s,%s,%s)', d, i, v);
     return;
-  } else if (i) { // get
-    var v = cache_i[i];
+  } else if (d && i) { // get
+    var v = ((cache[d] || {}).ips || {})[i];
     if (!v) {
       v = checkIp(i);
-      cache_i[i] = v;
+      if (!cache[d]) cache[d] = {};
+      if (!cache[d].ips) cache[d].ips = {};
+      cache[d].ips[i] = v;
     }
-    // debug('identifyIp(%s):%s', i, v);
+    // debug('identifyIp(%d,%s):%s', d, i, v);
     return v;
-  } else { // list
-    return list(cache_i);
+  } else if (d) { // list ips by domain
+    return list(((cache[d] || {}).ips || {}));
+  } else { // list all
+    return listAll(cache);
   }
 }
 exports.identifyIp = identifyIp;
 
-function identifyUrl(u, v){
+function identifyUrl(d, u, v){
   if (!init) throw new Error("NOT_INIT_YET");
   if (v) { // set
-    var v0 = cache_u[u];
-    cache_u[u] = v;
-    if (v0 = v) debug('identifyUrl(%s,%s)', u, v);
+    var v0 = ((cache[d] || {}).url || {})[u];
+    if (!cache[d]) cache[d] = {};
+    if (!cache[d].url) cache[d].url = {};
+    cache[d].url[u] = v;
+    if (v0 = v) debug('identifyUrl(%s,%s,%s)', d, u, v);
     return;
-  } else if (u) { // get
-    var v = cache_u[u];
+  } else if (d && u) { // get
+    var v = ((cache[d] || {}).url || {})[u];
     if (!v) {
       v = checkUrl(u);
-      cache_u[u] = v;
+      if (!cache[d]) cache[d] = {};
+      if (!cache[d].url) cache[d].url = {};
+      cache[d].url[u] = v;
     }
-    // debug('identifyUrl(%s):%s', u, v);
+    // debug('identifyUrl(%s,%s):%s', d, u, v);
     return v;
-  } else { // list
-    return list(cache_u);
+  } else if (d) { // list url by domain
+    return list(((cache[d] || {}).url || {}));
+  } else { // list all
+    return listAll(cache);
   }
 }
 exports.identifyUrl = identifyUrl;
@@ -156,6 +164,18 @@ function list(list){
   var s = '';
   for (var i in list){
     s += list[i] + '\t' + i + '\n';
+  }
+  return s;
+}
+
+function listAll(cache){
+  var s = '';
+  for (var i in cache){
+    s += '\n' + ((cache[i] || {}).dns || 'gray') + '\t' + i + '\n';  // dns
+    // s += '# ip:\n';
+    s += list(((cache[i] || {}).ips || {})); // ips color
+    // s += '# url:\n'
+    s += list(((cache[i] || {}).url || {})); // url color
   }
   return s;
 }

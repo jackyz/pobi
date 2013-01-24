@@ -31,19 +31,21 @@ function serveWpad(req, res, cb){
     var data = '';
     switch (o.pathname) {
       case '/identifyDomain' :
-	var p = o.query.domain || undefined;
+	var d = o.query.domain || undefined;
 	var v = o.query.val || undefined;
-	data = gfw.identifyDomain(p,v);
+	data = gfw.identifyDomain(d,v);
 	break;
       case '/identifyIp' :
-	var p = o.query.ip || undefined;
+	var d = o.query.domain || undefined;
+	var i = o.query.ip || undefined;
 	var v = o.query.val || undefined;
-	data = gfw.identifyIp(p,v);
+	data = gfw.identifyIp(d,i,v);
 	break;
       case '/identifyUrl' :
-	var p = o.query.url || undefined;
+	var d = o.query.domain || undefined;
+	var u = o.query.url || undefined;
 	var v = o.query.val || undefined;
-	data = gfw.identifyUrl(p,v);
+	data = gfw.identifyUrl(d,u,v);
 	break;
       default :
 	code = 404;
