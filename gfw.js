@@ -73,7 +73,7 @@ function identifyDomain(d, v){
       v = checkDomain(d);
       cache_d[d] = v;
     }
-    debug('identifyDomain(%s):%s', d, v);
+    // debug('identifyDomain(%s):%s', d, v);
     return v;
   } else { // list
     return list(cache_d);
@@ -94,7 +94,7 @@ function identifyIp(i, v){
       v = checkIp(i);
       cache_i[i] = v;
     }
-    debug('identifyIp(%s):%s', i, v);
+    // debug('identifyIp(%s):%s', i, v);
     return v;
   } else { // list
     return list(cache_i);
@@ -115,7 +115,7 @@ function identifyUrl(u, v){
       v = checkUrl(u);
       cache_u[u] = v;
     }
-    debug('identifyUrl(%s):%s', u, v);
+    // debug('identifyUrl(%s):%s', u, v);
     return v;
   } else { // list
     return list(cache_u);
