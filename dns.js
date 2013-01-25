@@ -74,7 +74,8 @@ function _serve_query(color, req, res){
 	req.retry++;
 	_serve_query.call(self, 'black', req, res);
       } else {
-	gfw.identifyDomain(dn, 'fail');
+	// it's too hard, need more carefully
+	// gfw.identifyDomain(dn, 'fail');
 	debug("%s: Query [%s] %j GFWED FAIL", req.ip, color, dn);
 	res.send();
       }

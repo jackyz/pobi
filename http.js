@@ -17,7 +17,7 @@ var app = process.env.npm_config_app || 'local';
 
 function resolve(domain, callback){
   dns.resolve4(domain, function(e, ips){
-    if (e) {
+    if (e || ips.length == 0) {
       return callback(e);
     }
     var r = {};
@@ -61,7 +61,7 @@ function _tunnel(ip, color, req, sock, head){
 
   // debug('%s : tunnel [%s] %s CON ING %s', req.ip, color, req.url, server.connections);
 
-  if (color == 'fail') {
+  if (color == 'fail' || color == undefined || ip == undefined) {
     sock.end('HTTP/1.0 500 Connect fail\r\n\r\n\r\n');
     return;
   }
@@ -151,7 +151,7 @@ function proxy(req, res){
 function _proxy(ip, color, req, res){
   // debug('%s : proxy [%s] %s %s CON ING %s', req.ip, color, req.method, req.url, server.connections);
 
-  if (color == 'fail') {
+  if (color == 'fail' || color == undefined || ip == undefined) {
     res.statusCode = 500;
     res.end(color);
     return;
